@@ -31,8 +31,8 @@ body, html {
     border-radius: 50%;
     position: absolute;
     top: 0;
-    left: 50%;
-    transform: translateX(-50%);
+    left: calc(50% - 25px); /* Centrar el botón */
     touch-action: none;
     transition: left 0.3s ease;
+    cursor: pointer;
 }
