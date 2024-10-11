@@ -5,6 +5,7 @@ const Fmin = 200; // Frecuencia mínima en Hz
 const Fmax = 1000; // Frecuencia máxima en Hz
 const Gmax = 3; // Constante para intensidad
 const Vmax = 1; // Valor máximo de volumen (puede ajustarse)
+const Vdefault = 0.5; // Intensidad predeterminada cuando no hay movimiento
 
 // Cálculo de la constante M para que F = M * X esté en [Fmin, Fmax]
 const M = (Fmax - Fmin);
@@ -20,6 +21,9 @@ let sliderRect;
 let audioCtx;
 let gainNode;
 let oscillators = [];
+
+// Variables para manejar la intensidad
+let currentVolume = Vdefault; // Inicialmente con intensidad predeterminada
 
 // Función para actualizar el rectángulo de la barra deslizante
 function updateSliderRect() {
@@ -68,10 +72,21 @@ requestDeviceMotionPermission();
 function handleDeviceMotion(event) {
     let G = event.accelerationIncludingGravity.y; // Puedes cambiar el eje según necesidad
     let TgF = Math.abs(G) < 0.1 ? 0 : Math.abs(G);
-    let V = (TgF / Gmax) * Vmax;
-    V = Math.min(Math.max(V, 0), Vmax);
-    if (gainNode) {
-        gainNode.gain.setTargetAtTime(V, audioCtx.currentTime, 0.01);
+    let V;
+
+    if (TgF === 0) {
+        V = Vdefault; // Intensidad constante cuando no hay movimiento
+    } else {
+        V = (TgF / Gmax) * Vmax;
+        V = Math.min(Math.max(V, 0), Vmax); // Asegura que V esté dentro de los límites
+    }
+
+    // Solo actualizar el volumen si ha cambiado
+    if (V !== currentVolume) {
+        currentVolume = V;
+        if (gainNode) {
+            gainNode.gain.setTargetAtTime(currentVolume, audioCtx.currentTime, 0.01);
+        }
     }
 }
 
@@ -83,7 +98,7 @@ function iniciarAudio(F) {
     }
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     gainNode = audioCtx.createGain();
-    gainNode.gain.setValueAtTime(0, audioCtx.currentTime); // Inicialmente silencioso
+    gainNode.gain.setValueAtTime(currentVolume, audioCtx.currentTime); // Usar el volumen actual
     gainNode.connect(audioCtx.destination);
 
     // Definir las frecuencias y sus intensidades
@@ -97,16 +112,18 @@ function iniciarAudio(F) {
 
     // Crear y conectar osciladores
     frequencies.forEach(item => {
-        let osc = audioCtx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(item.freq, audioCtx.currentTime);
+        if (item.freq > 0) { // Evitar frecuencias negativas o cero
+            let osc = audioCtx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(item.freq, audioCtx.currentTime);
 
-        let oscGain = audioCtx.createGain();
-        oscGain.gain.setValueAtTime(item.gain, audioCtx.currentTime);
+            let oscGain = audioCtx.createGain();
+            oscGain.gain.setValueAtTime(item.gain, audioCtx.currentTime);
 
-        osc.connect(oscGain).connect(gainNode);
-        osc.start();
-        oscillators.push(osc);
+            osc.connect(oscGain).connect(gainNode);
+            osc.start();
+            oscillators.push(osc);
+        }
     });
 }
 
@@ -133,7 +150,7 @@ function actualizarFrecuencias(F) {
             default:
                 freq = F;
         }
-        if (freq > 0) { // Evitar frecuencias negativas
+        if (freq > 0) { // Evitar frecuencias negativas o cero
             osc.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.01);
         }
     });
@@ -147,6 +164,7 @@ function detenerAudio() {
         audioCtx.close();
         audioCtx = null;
     }
+    currentVolume = Vdefault; // Restablecer al volumen predeterminado
 }
 
 // Función para obtener la posición X normalizada (0 a 1)
@@ -228,3 +246,4 @@ function endDrag(event) {
 
 // Evitar que el botón vuelva al centro si aún está siendo arrastrado
 sliderButton.addEventListener('dragstart', (e) => e.preventDefault());
+
