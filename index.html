@@ -2,44 +2,20 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <title>Control de Sonido con Acelerómetro</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prueba de Slider</title>
-    <style>
-        body, html {
-            height: 100%;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #f0f0f0;
-        }
-
-        .slider-container {
-            width: 80%;
-            max-width: 600px;
-            height: 50px;
-            background-color: #ddd;
-            border-radius: 25px;
-            position: relative;
-            border: 2px solid red; /* Temporal para depuración */
-        }
-
-        #soundButton {
-            width: 50px;
-            height: 50px;
-            background-color: #4CAF50;
-            border: 2px solid green; /* Temporal para depuración */
-            border-radius: 50%;
-            position: absolute;
-            top: 0;
-            left: calc(50% - 25px);
-            cursor: pointer;
-        }
-    </style>
+    <!-- Enlace al archivo CSS -->
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="slider-container">
-        <button id="soundButton"></button>
+        <div class="slider">
+            <div class="slider-button" id="sliderButton"></div>
+        </div>
     </div>
+    <!-- Botón para solicitar permisos de acelerómetro en dispositivos iOS (si es necesario) -->
+    <button id="requestPermissionButton" style="display: none;">Permitir Acceso al Acelerómetro</button>
+    <!-- Enlace al archivo JavaScript -->
+    <script src="script.js"></script>
 </body>
 </html>
