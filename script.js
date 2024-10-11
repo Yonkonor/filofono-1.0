@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let audioContext;
     let gainNode;
     let oscillatorNodes = [];
-    let animationFrameId;
 
     // Inicializar AudioContext
     function initAudio() {
@@ -30,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Crear osciladores con armónicos
     function createOscillators(F) {
-        // Limpiar osciladores existentes
+        // Detener y limpiar osciladores existentes
         oscillatorNodes.forEach(osc => osc.stop());
         oscillatorNodes = [];
 
@@ -50,18 +49,18 @@ document.addEventListener('DOMContentLoaded', () => {
         oscillatorNodes.push(createOsc(F, 1));
 
         // Armónicos superiores
-        oscillatorNodes.push(createOsc(F + 1, 0.5));
-        oscillatorNodes.push(createOsc(F + 2, 1/3));
+        if (F + 1 <= Fmax) oscillatorNodes.push(createOsc(F + 1, 0.5));
+        if (F + 2 <= Fmax) oscillatorNodes.push(createOsc(F + 2, 1/3));
 
         // Armónicos inferiores
-        oscillatorNodes.push(createOsc(F - 1, 0.5));
-        oscillatorNodes.push(createOsc(F - 2, 1/3));
+        if (F - 1 >= Fmin) oscillatorNodes.push(createOsc(F - 1, 0.5));
+        if (F - 2 >= Fmin) oscillatorNodes.push(createOsc(F - 2, 1/3));
     }
 
     // Calcular frecuencia basada en la posición del botón
     function calculateFrequency(x) {
-        const sliderWidth = slider.clientWidth;
-        const F = Fmin + ((Fmax - Fmin) * (x / (sliderWidth - soundButton.clientWidth)));
+        const sliderWidth = slider.clientWidth - soundButton.clientWidth;
+        const F = Fmin + ((Fmax - Fmin) * (x / sliderWidth));
         return Math.min(Math.max(F, Fmin), Fmax);
     }
 
@@ -105,25 +104,25 @@ document.addEventListener('DOMContentLoaded', () => {
             isPressed = true;
             initAudio();
             startListeningAccelerometer();
-            const rect = slider.getBoundingClientRect();
-            const x = soundButton.offsetLeft;
-            const frequency = calculateFrequency(x);
+
+            // Obtener la posición actual del botón en píxeles
+            const leftPx = parseFloat(soundButton.style.left);
+            const frequency = calculateFrequency(leftPx + (soundButton.clientWidth / 2));
             createOscillators(frequency);
         }
     }
 
     // Manejar el fin de la presión del botón
     function onPressEnd(event) {
-        event.preventDefault();
         if (isPressed) {
             isPressed = false;
             oscillatorNodes.forEach(osc => osc.stop());
             oscillatorNodes = [];
             gainNode.gain.value = 0;
             stopListeningAccelerometer();
-            // Volver el botón a la posición inicial
-            soundButton.style.left = '50%';
-            soundButton.style.transform = 'translateX(-50%)';
+
+            // Volver el botón a la posición inicial (centro)
+            soundButton.style.left = `calc(50% - ${soundButton.clientWidth / 2}px)`;
         }
     }
 
@@ -132,6 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isPressed) {
             let clientX;
             if (event.type.startsWith('touch')) {
+                if (event.touches.length === 0) return;
                 clientX = event.touches[0].clientX;
             } else {
                 clientX = event.clientX;
