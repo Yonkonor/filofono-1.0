@@ -25,6 +25,17 @@ let oscillators = [];
 // Variables para manejar la intensidad
 let currentVolume = Vdefault; // Inicialmente con intensidad predeterminada
 
+// Variables para suavizado de acelerómetro
+let smoothedG = 0;
+const alpha = 0.1; // Factor de suavizado para la media móvil exponencial
+
+// Umbrales para histeresis
+const thresholdHigh = 0.2; // Umbral superior para iniciar cambios
+const thresholdLow = 0.1; // Umbral inferior para restaurar a Vdefault
+
+// Estado de movimiento
+let isMoving = false;
+
 // Función para actualizar el rectángulo de la barra deslizante
 function updateSliderRect() {
     sliderRect = slider.getBoundingClientRect();
@@ -71,14 +82,33 @@ requestDeviceMotionPermission();
 // Función para manejar los datos del acelerómetro
 function handleDeviceMotion(event) {
     let G = event.accelerationIncludingGravity.y; // Puedes cambiar el eje según necesidad
-    let TgF = Math.abs(G) < 0.1 ? 0 : Math.abs(G);
+    let absG = Math.abs(G);
+
+    // Suavizado de G
+    smoothedG = alpha * absG + (1 - alpha) * smoothedG;
+
     let V;
 
-    if (TgF === 0) {
-        V = Vdefault; // Intensidad constante cuando no hay movimiento
+    if (isMoving) {
+        if (smoothedG < thresholdLow) {
+            // Restaurar a Vdefault
+            V = Vdefault;
+            isMoving = false;
+        } else {
+            // Calcular V basado en smoothedG
+            V = (smoothedG / Gmax) * Vmax;
+            V = Math.min(Math.max(V, 0), Vmax); // Asegura que V esté dentro de los límites
+        }
     } else {
-        V = (TgF / Gmax) * Vmax;
-        V = Math.min(Math.max(V, 0), Vmax); // Asegura que V esté dentro de los límites
+        if (smoothedG > thresholdHigh) {
+            // Detectar inicio de movimiento
+            isMoving = true;
+            V = (smoothedG / Gmax) * Vmax;
+            V = Math.min(Math.max(V, 0), Vmax);
+        } else {
+            // Mantener Vdefault
+            V = Vdefault;
+        }
     }
 
     // Solo actualizar el volumen si ha cambiado
@@ -246,4 +276,3 @@ function endDrag(event) {
 
 // Evitar que el botón vuelva al centro si aún está siendo arrastrado
 sliderButton.addEventListener('dragstart', (e) => e.preventDefault());
-
