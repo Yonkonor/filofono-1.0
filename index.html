@@ -1,21 +1,118 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Control de Sonido con Acelerómetro</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Enlace al archivo CSS -->
-    <link rel="stylesheet" href="styles.css">
+    <title>Slider Sound App</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        #slider-container {
+            position: relative;
+            width: 80%;
+            height: 10px;
+            background-color: black;
+            border-radius: 5px;
+        }
+
+        #slider-button {
+            position: absolute;
+            top: -10px;
+            width: 30px;
+            height: 30px;
+            background-color: cyan;
+            border-radius: 50%;
+            transform: translateX(-50%);
+            touch-action: none;
+        }
+    </style>
 </head>
 <body>
-    <div class="slider-container">
-        <div class="slider">
-            <div class="slider-button" id="sliderButton"></div>
-        </div>
+    <div id="slider-container">
+        <div id="slider-button"></div>
     </div>
-    <!-- Botón para solicitar permisos de acelerómetro en dispositivos iOS (si es necesario) -->
-    <button id="requestPermissionButton" style="display: none;">Permitir Acceso al Acelerómetro</button>
-    <!-- Enlace al archivo JavaScript -->
-    <script src="script.js"></script>
+
+    <script>
+        const sliderContainer = document.getElementById('slider-container');
+        const sliderButton = document.getElementById('slider-button');
+
+        const sliderWidth = sliderContainer.offsetWidth;
+        let dragging = false;
+        let positionX = 0.5; // Initial position in normalized scale
+
+        // Constants for sound generation
+        const Fmin = 200; // Example minimum frequency
+        const Fmax = 1000; // Example maximum frequency
+        const M = (Fmax - Fmin);
+        const Gmax = 3;
+        const Vmax = 1;
+
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        function updateSliderPosition(clientX) {
+            const rect = sliderContainer.getBoundingClientRect();
+            let x = Math.min(Math.max(clientX - rect.left, 0), sliderWidth);
+            positionX = x / sliderWidth;
+            sliderButton.style.left = `${positionX * 100}%`;
+        }
+
+        function createOscillator(freq, gainValue) {
+            const oscillator = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+
+            oscillator.frequency.value = freq;
+            gain.gain.value = gainValue;
+
+            oscillator.connect(gain).connect(audioContext.destination);
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+
+        function playSound(frequency, intensity) {
+            createOscillator(frequency, intensity);
+            createOscillator(frequency + 1, intensity / 2);
+            createOscillator(frequency + 2, intensity / 3);
+            createOscillator(frequency - 1, intensity / 2);
+            createOscillator(frequency - 2, intensity / 3);
+        }
+
+        function handleMotion(event) {
+            const g = Math.abs(event.accelerationIncludingGravity.x || 0);
+            const TgF = g < 0.1 ? 0 : g;
+            const intensity = (TgF / Gmax) * Vmax;
+
+            const F = Fmin + positionX * M;
+            playSound(F, intensity);
+        }
+
+        sliderButton.addEventListener('pointerdown', (e) => {
+            dragging = true;
+            updateSliderPosition(e.clientX);
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (dragging) {
+                updateSliderPosition(e.clientX);
+            }
+        });
+
+        window.addEventListener('pointerup', () => {
+            dragging = false;
+            positionX = 0.5;
+            sliderButton.style.left = '50%';
+        });
+
+        if (window.DeviceMotionEvent) {
+            window.addEventListener('devicemotion', handleMotion);
+        } else {
+            alert('DeviceMotionEvent is not supported on this device.');
+        }
+    </script>
 </body>
 </html>
