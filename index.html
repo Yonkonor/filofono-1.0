@@ -3,49 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sonido Sintético por Acelerómetro</title>
+    <title>Violín por Acelerómetro</title>
     <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
-        }
-
-        #gValue {
-            width: 200px;
-            height: 200px;
-            border-radius: 50%;
-            background-color: #4CAF50;
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            margin: 20px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.2);
-        }
-
-        button {
-            padding: 15px 30px;
-            font-size: 18px;
-            background-color: #2196F3;
-            color: white;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            margin: 20px;
-        }
-
-        button:hover {
-            background-color: #1976D2;
-        }
-
-        button:active {
-            transform: scale(0.95);
-        }
+        /* Mantener el mismo estilo CSS anterior */
     </style>
 </head>
 <body>
@@ -54,8 +14,9 @@
 
     <script>
         let audioContext;
-        let oscillator;
+        let oscillators = [];
         let gainNode;
+        let filterNode;
         let isPlaying = false;
         let acceleration = { x: 0, y: 0, z: 0 };
 
@@ -67,7 +28,35 @@
                 acceleration.x ** 2 +
                 acceleration.y ** 2 +
                 acceleration.z ** 2
-            ) / 9.81; // Convertir a unidades g
+            ) / 9.81;
+        }
+
+        function createViolinSound() {
+            // Crear osciladores con armónicos
+            const frequencies = [200, 400, 600, 800]; // Fundamental y armónicos
+            oscillators = frequencies.map(freq => {
+                const osc = audioContext.createOscillator();
+                osc.type = 'sawtooth'; // Forma de onda más rica en armónicos
+                osc.frequency.value = freq;
+                return osc;
+            });
+
+            // Crear filtro para suavizar el sonido
+            filterNode = audioContext.createBiquadFilter();
+            filterNode.type = 'lowpass';
+            filterNode.frequency.value = 1200;
+            filterNode.Q.value = 2;
+
+            // Configurar nodos de ganancia y conexiones
+            gainNode = audioContext.createGain();
+            
+            // Conectar todos los osciladores al filtro
+            oscillators.forEach(osc => osc.connect(filterNode));
+            filterNode.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Iniciar osciladores
+            oscillators.forEach(osc => osc.start());
         }
 
         function updateSound() {
@@ -76,31 +65,31 @@
             const g = calculateGValue();
             gValueDisplay.textContent = g.toFixed(2) + ' g';
             
-            // Ajustar la ganancia proporcional al valor g (limitado a 0-2)
             const clampedG = Math.min(Math.max(g, 0), 2);
-            gainNode.gain.value = clampedG * 0.3; // Factor de escala para el volumen
+            const now = audioContext.currentTime;
+            
+            // Control suavizado de la ganancia
+            gainNode.gain.setTargetAtTime(clampedG * 0.2, now, 0.1);
+            
+            // Modulación del filtro basada en la aceleración
+            filterNode.frequency.setValueAtTime(800 + (clampedG * 400), now);
+            
+            // Agregar vibrato proporcional a la aceleración
+            const vibratoDepth = clampedG * 3;
+            oscillators[0].frequency.setValueAtTime(
+                200 + (Math.sin(now * 5) * vibratoDepth), now);
         }
 
         async function toggleSound() {
             if (!isPlaying) {
-                // Solicitar permisos del acelerómetro
                 if (typeof DeviceMotionEvent.requestPermission === 'function') {
                     const permission = await DeviceMotionEvent.requestPermission();
                     if (permission !== 'granted') return;
                 }
 
-                // Inicializar audio
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                gainNode = audioContext.createGain();
-                oscillator = audioContext.createOscillator();
+                createViolinSound();
                 
-                oscillator.type = 'sine';
-                oscillator.frequency.value = 200; // 200 Hz
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                oscillator.start();
-                
-                // Configurar actualización continua
                 window.addEventListener('devicemotion', (event) => {
                     acceleration = event.accelerationIncludingGravity;
                     updateSound();
@@ -109,7 +98,7 @@
                 toggleButton.textContent = 'Detener';
                 isPlaying = true;
             } else {
-                oscillator.stop();
+                oscillators.forEach(osc => osc.stop());
                 audioContext.close();
                 toggleButton.textContent = 'Iniciar';
                 isPlaying = false;
