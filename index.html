@@ -70,6 +70,7 @@
         let filterNode;
         let isPlaying = false;
         let acceleration = { x: 0, y: 0, z: 0 };
+        const threshold = 0.1; // Umbral para detectar quietud
 
         const toggleButton = document.getElementById('toggleButton');
 
@@ -114,11 +115,14 @@
         const gChart = new Chart(document.getElementById('gChart'), chartConfig);
 
         function calculateGValue() {
-            return Math.sqrt(
+            const g = Math.sqrt(
                 acceleration.x ** 2 +
                 acceleration.y ** 2 +
                 acceleration.z ** 2
             ) / 9.81;
+
+            // Si el teléfono está quieto, devolver 0
+            return g < threshold ? 0 : g;
         }
 
         function createViolinSound() {
@@ -136,7 +140,7 @@
             filterNode.Q.value = 2;
 
             gainNode = audioContext.createGain();
-            gainNode.gain.value = 0;
+            gainNode.gain.value = 0; // Inicialmente sin sonido
             
             oscillators.forEach(osc => osc.connect(filterNode));
             filterNode.connect(gainNode);
@@ -149,21 +153,24 @@
             if (!isPlaying) return;
 
             const currentG = calculateGValue();
-            
-            // Intensidad proporcional al valor instantáneo de g
-            const intensity = Math.min(currentG, 10); // Límite superior de 10g
             const now = audioContext.currentTime;
-            
-            // Control de ganancia
-            gainNode.gain.setTargetAtTime(intensity * 0.1, now, 0.1); // Ajuste de escala
-            
-            // Modulación dinámica del filtro
-            filterNode.frequency.setValueAtTime(800 + (intensity * 600), now);
-            
-            // Vibrato proporcional a la intensidad
-            const vibratoDepth = intensity * 5;
-            oscillators[0].frequency.setValueAtTime(
-                200 + (Math.sin(now * 8) * vibratoDepth), now);
+
+            // Si el teléfono está quieto, silenciar el sonido
+            if (currentG === 0) {
+                gainNode.gain.setTargetAtTime(0, now, 0.1); // Reducir ganancia a 0
+            } else {
+                // Intensidad proporcional al valor instantáneo de g
+                const intensity = Math.min(currentG, 10); // Límite superior de 10g
+                gainNode.gain.setTargetAtTime(intensity * 0.1, now, 0.1); // Ajuste de escala
+                
+                // Modulación dinámica del filtro
+                filterNode.frequency.setValueAtTime(800 + (intensity * 600), now);
+                
+                // Vibrato proporcional a la intensidad
+                const vibratoDepth = intensity * 5;
+                oscillators[0].frequency.setValueAtTime(
+                    200 + (Math.sin(now * 8) * vibratoDepth), now);
+            }
 
             // Actualizar gráfico
             updateChart(currentG);
