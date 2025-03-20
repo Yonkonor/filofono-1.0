@@ -66,7 +66,6 @@
         let filterNode;
         let isPlaying = false;
         let acceleration = { x: 0, y: 0, z: 0 };
-        let lastG = 1;
 
         const toggleButton = document.getElementById('toggleButton');
         const gValueDisplay = document.getElementById('gValue');
@@ -107,13 +106,10 @@
             if (!isPlaying) return;
 
             const currentG = calculateGValue();
-            const deltaG = Math.abs(currentG - lastG);
-            lastG = currentG;
-            
             gValueDisplay.textContent = currentG.toFixed(2) + ' g';
             
-            // Intensidad proporcional a la variación de g
-            const intensity = Math.min(deltaG * 5, 2);
+            // Intensidad proporcional al valor instantáneo de g
+            const intensity = Math.min(currentG, 2); // Limitar a un máximo de 2g
             const now = audioContext.currentTime;
             
             // Control de ganancia
