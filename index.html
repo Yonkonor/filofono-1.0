@@ -70,7 +70,8 @@
         let filterNode;
         let isPlaying = false;
         let acceleration = { x: 0, y: 0, z: 0 };
-        const threshold = 0.1; // Umbral para detectar quietud
+        const threshold = 0.2; // Umbral para detectar quietud
+        let smoothedG = 0; // Valor suavizado de la aceleración
 
         const toggleButton = document.getElementById('toggleButton');
 
@@ -121,8 +122,11 @@
                 acceleration.z ** 2
             ) / 9.81;
 
+            // Suavizado del valor de g para reducir el ruido
+            smoothedG = smoothedG * 0.9 + g * 0.1;
+
             // Si el teléfono está quieto, devolver 0
-            return g < threshold ? 0 : g;
+            return smoothedG < threshold ? 0 : smoothedG;
         }
 
         function createViolinSound() {
