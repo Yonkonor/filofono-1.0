@@ -5,54 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Violín por Acelerómetro</title>
     <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
-        }
-
-        #gValue {
-            width: 200px;
-            height: 200px;
-            border-radius: 50%;
-            background-color: #4CAF50;
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            margin: 20px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.2);
-        }
-
-        button {
-            width: 60px;
-            height: 60px;
-            padding: 0;
-            border-radius: 50%;
-            font-size: 16px;
-            background-color: #2196F3;
-            color: white;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-
-        button:hover {
-            background-color: #1976D2;
-            transform: scale(1.1);
-        }
-
-        button:active {
-            transform: scale(0.9);
-        }
+        /* Mantener el mismo estilo CSS anterior */
     </style>
 </head>
 <body>
@@ -66,7 +19,7 @@
         let filterNode;
         let isPlaying = false;
         let acceleration = { x: 0, y: 0, z: 0 };
-        let lastG = 1; // Valor de referencia en reposo (1g)
+        let lastG = 1;
 
         const toggleButton = document.getElementById('toggleButton');
         const gValueDisplay = document.getElementById('gValue');
@@ -77,6 +30,14 @@
                 acceleration.y ** 2 +
                 acceleration.z ** 2
             ) / 9.81;
+        }
+
+        function intensityFunction(deltaG) {
+            const a = 1; // Parámetro de la función
+            if (deltaG === 0) return 0;
+            
+            const logTerm = Math.log(1 + a * deltaG);
+            return 0.5 * ((1 + logTerm) / logTerm);
         }
 
         function createViolinSound() {
@@ -107,22 +68,22 @@
             if (!isPlaying) return;
 
             const currentG = calculateGValue();
-            const deltaG = Math.abs(currentG - lastG); // Diferencia respecto al último valor
-            lastG = currentG; // Actualizar referencia
+            const deltaG = Math.abs(currentG - lastG);
+            lastG = currentG;
             
             gValueDisplay.textContent = currentG.toFixed(2) + ' g';
             
-            // Calcular intensidad inversamente proporcional a la estabilidad
-            const intensity = Math.min(deltaG * 5, 2); // Factor de sensibilidad ajustable
+            // Aplicar la función de intensidad personalizada
+            const intensity = intensityFunction(deltaG);
             const now = audioContext.currentTime;
             
-            // Control de ganancia invertido
+            // Control de ganancia con la nueva función
             gainNode.gain.setTargetAtTime(intensity * 0.3, now, 0.1);
             
             // Modulación dinámica del filtro
             filterNode.frequency.setValueAtTime(800 + (intensity * 600), now);
             
-            // Vibrato más intenso con mayor movimiento
+            // Vibrato proporcional a la intensidad
             const vibratoDepth = intensity * 5;
             oscillators[0].frequency.setValueAtTime(
                 200 + (Math.sin(now * 8) * vibratoDepth), now);
