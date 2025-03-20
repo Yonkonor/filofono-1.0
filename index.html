@@ -16,6 +16,20 @@
             height: 100vh;
         }
 
+        #gValue {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background-color: #4CAF50;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            margin: 20px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+
         button {
             width: 60px;
             height: 60px;
@@ -46,7 +60,6 @@
         #chartContainer {
             width: 90%;
             max-width: 800px;
-            height: 400px; /* Gráfico más alto */
             margin: 20px auto;
             background-color: white;
             border-radius: 10px;
@@ -58,6 +71,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+    <div id="gValue">0.00 g</div>
     <button id="toggleButton">▶</button>
     <div id="chartContainer">
         <canvas id="gChart"></canvas>
@@ -72,6 +86,7 @@
         let acceleration = { x: 0, y: 0, z: 0 };
 
         const toggleButton = document.getElementById('toggleButton');
+        const gValueDisplay = document.getElementById('gValue');
 
         // Configuración del gráfico
         const chartConfig = {
@@ -102,7 +117,7 @@
                             text: 'Aceleración (g)'
                         },
                         min: 0,
-                        max: 10 // Rango aumentado a 10
+                        max: 3
                     }
                 },
                 animation: false,
@@ -149,13 +164,14 @@
             if (!isPlaying) return;
 
             const currentG = calculateGValue();
+            gValueDisplay.textContent = currentG.toFixed(2) + ' g';
             
             // Intensidad proporcional al valor instantáneo de g
-            const intensity = Math.min(currentG, 10); // Límite superior de 10g
+            const intensity = Math.min(currentG, 2);
             const now = audioContext.currentTime;
             
             // Control de ganancia
-            gainNode.gain.setTargetAtTime(intensity * 0.1, now, 0.1); // Ajuste de escala
+            gainNode.gain.setTargetAtTime(intensity * 0.3, now, 0.1);
             
             // Modulación dinámica del filtro
             filterNode.frequency.setValueAtTime(800 + (intensity * 600), now);
@@ -186,33 +202,21 @@
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 createViolinSound();
                 
-                // Optimización: Usar requestAnimationFrame para mayor eficiencia
-                let lastUpdate = performance.now();
-                const updateInterval = 1000 / 60; // 60 FPS
-
-                const updateLoop = () => {
-                    const now = performance.now();
-                    if (now - lastUpdate >= updateInterval) {
-                        updateSound();
-                        lastUpdate = now;
-                    }
-                    if (isPlaying) requestAnimationFrame(updateLoop);
-                };
-
                 window.addEventListener('devicemotion', (event) => {
                     acceleration = event.accelerationIncludingGravity;
+                    updateSound();
                 });
 
                 toggleButton.textContent = '⏹';
                 toggleButton.style.backgroundColor = '#f44336';
                 isPlaying = true;
-                updateLoop(); // Iniciar el bucle de actualización
             } else {
                 oscillators.forEach(osc => osc.stop());
                 audioContext.close();
                 toggleButton.textContent = '▶';
                 toggleButton.style.backgroundColor = '#2196F3';
                 isPlaying = false;
+                gValueDisplay.textContent = '0.00 g';
             }
         }
 
