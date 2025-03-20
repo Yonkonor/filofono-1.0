@@ -3,181 +3,121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Sonido con Acelerómetro</title>
+    <title>Sonido Sintético por Acelerómetro</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px;
+            font-family: Arial, sans-serif;
             background-color: #f0f0f0;
         }
 
-        .control-container {
+        #gValue {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background-color: #4CAF50;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
             margin: 20px;
-            padding: 20px;
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            width: 80%;
-            max-width: 400px;
-        }
-
-        input[type="range"] {
-            width: 100%;
-            margin: 10px 0;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
         }
 
         button {
             padding: 15px 30px;
             font-size: 18px;
-            background-color: #4CAF50;
+            background-color: #2196F3;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 25px;
             cursor: pointer;
-            margin: 10px 0;
+            transition: background-color 0.3s;
+            margin: 20px;
+        }
+
+        button:hover {
+            background-color: #1976D2;
         }
 
         button:active {
-            background-color: #45a049;
-        }
-
-        #status {
-            margin-top: 20px;
-            color: #666;
-        }
-
-        #sensorData {
-            margin-top: 10px;
-            font-size: 14px;
+            transform: scale(0.95);
         }
     </style>
 </head>
 <body>
-    <div class="control-container">
-        <label>Frecuencia: <span id="freqValue">440</span> Hz</label>
-        <input type="range" id="freqSlider" min="50" max="2000" value="440">
-        
-        <button id="toggleButton">Iniciar Sonido</button>
-        
-        <div id="sensorData">
-            Aceleración X: <span id="accelX">0</span><br>
-            Aceleración Y: <span id="accelY">0</span><br>
-            Aceleración Z: <span id="accelZ">0</span>
-        </div>
-    </div>
-    
-    <div id="status">Esperando interacción del usuario...</div>
+    <div id="gValue">0.00 g</div>
+    <button id="toggleButton">Iniciar</button>
 
     <script>
-        let audioContext = null;
-        let oscillator = null;
-        let gainNode = null;
+        let audioContext;
+        let oscillator;
+        let gainNode;
         let isPlaying = false;
-        let acceleration = {x: 0, y: 0, z: 0};
+        let acceleration = { x: 0, y: 0, z: 0 };
 
-        // Elementos de la UI
         const toggleButton = document.getElementById('toggleButton');
-        const freqSlider = document.getElementById('freqSlider');
-        const freqValue = document.getElementById('freqValue');
-        const statusDiv = document.getElementById('status');
-        const accelX = document.getElementById('accelX');
-        const accelY = document.getElementById('accelY');
-        const accelZ = document.getElementById('accelZ');
+        const gValueDisplay = document.getElementById('gValue');
 
-        // Configurar el control deslizante
-        freqSlider.addEventListener('input', (e) => {
-            freqValue.textContent = e.target.value;
-            if(oscillator) {
-                oscillator.frequency.value = e.target.value;
-            }
-        });
+        function calculateGValue() {
+            return Math.sqrt(
+                acceleration.x ** 2 +
+                acceleration.y ** 2 +
+                acceleration.z ** 2
+            ) / 9.81; // Convertir a unidades g
+        }
 
-        // Manejar el botón de inicio/parada
-        toggleButton.addEventListener('click', async () => {
-            if(!audioContext) {
+        function updateSound() {
+            if (!isPlaying) return;
+
+            const g = calculateGValue();
+            gValueDisplay.textContent = g.toFixed(2) + ' g';
+            
+            // Ajustar la ganancia proporcional al valor g (limitado a 0-2)
+            const clampedG = Math.min(Math.max(g, 0), 2);
+            gainNode.gain.value = clampedG * 0.3; // Factor de escala para el volumen
+        }
+
+        async function toggleSound() {
+            if (!isPlaying) {
+                // Solicitar permisos del acelerómetro
+                if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                    const permission = await DeviceMotionEvent.requestPermission();
+                    if (permission !== 'granted') return;
+                }
+
+                // Inicializar audio
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 gainNode = audioContext.createGain();
-                gainNode.connect(audioContext.destination);
-            }
-
-            if(!isPlaying) {
-                // Iniciar el sonido
                 oscillator = audioContext.createOscillator();
+                
                 oscillator.type = 'sine';
-                oscillator.frequency.value = freqSlider.value;
+                oscillator.frequency.value = 200; // 200 Hz
                 oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
                 oscillator.start();
+                
+                // Configurar actualización continua
+                window.addEventListener('devicemotion', (event) => {
+                    acceleration = event.accelerationIncludingGravity;
+                    updateSound();
+                });
+
+                toggleButton.textContent = 'Detener';
                 isPlaying = true;
-                toggleButton.textContent = 'Detener Sonido';
-                statusDiv.textContent = 'Sonido activo - Mueve el dispositivo para cambiar la intensidad';
-                startAccelerometer();
             } else {
-                // Detener el sonido
                 oscillator.stop();
-                oscillator.disconnect();
+                audioContext.close();
+                toggleButton.textContent = 'Iniciar';
                 isPlaying = false;
-                toggleButton.textContent = 'Iniciar Sonido';
-                statusDiv.textContent = 'Sonido detenido';
-                stopAccelerometer();
-            }
-        });
-
-        // Manejar el acelerómetro
-        function startAccelerometer() {
-            if(typeof DeviceMotionEvent !== 'undefined' && 
-               typeof DeviceMotionEvent.requestPermission === 'function') {
-                // Solicitar permiso en iOS
-                DeviceMotionEvent.requestPermission()
-                    .then(response => {
-                        if(response === 'granted') {
-                            window.addEventListener('devicemotion', handleMotion);
-                        }
-                    })
-                    .catch(console.error);
-            } else {
-                // Android y otros navegadores
-                window.addEventListener('devicemotion', handleMotion);
+                gValueDisplay.textContent = '0.00 g';
             }
         }
 
-        function stopAccelerometer() {
-            window.removeEventListener('devicemotion', handleMotion);
-        }
-
-        function handleMotion(event) {
-            acceleration = {
-                x: event.accelerationIncludingGravity.x,
-                y: event.accelerationIncludingGravity.y,
-                z: event.accelerationIncludingGravity.z
-            };
-
-            // Actualizar UI
-            accelX.textContent = acceleration.x.toFixed(2);
-            accelY.textContent = acceleration.y.toFixed(2);
-            accelZ.textContent = acceleration.z.toFixed(2);
-
-            // Calcular intensidad basada en la aceleración
-            if(gainNode) {
-                // Usar la magnitud del vector de aceleración
-                const intensity = Math.sqrt(
-                    acceleration.x**2 + 
-                    acceleration.y**2 + 
-                    acceleration.z**2
-                ) / 15; // Normalizar
-
-                // Limitar el rango de 0.1 a 1.0
-                gainNode.gain.value = Math.min(Math.max(intensity, 0.1), 1.0);
-            }
-        }
-
-        // Verificar compatibilidad
-        if(!('DeviceMotionEvent' in window)) {
-            statusDiv.textContent = 'El acelerómetro no está disponible en este dispositivo';
-            toggleButton.disabled = true;
-        }
+        toggleButton.addEventListener('click', toggleSound);
     </script>
 </body>
 </html>
