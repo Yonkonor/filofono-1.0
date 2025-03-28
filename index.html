@@ -11,20 +11,9 @@
             align-items: center;
             font-family: Arial, sans-serif;
             background-color: #f0f0f0;
-        }
-
-        #gValue {
-            width: 200px;
-            height: 200px;
-            border-radius: 50%;
-            background-color: #4CAF50;
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            margin: 20px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
         }
 
         button {
@@ -53,11 +42,26 @@
         button:active {
             transform: scale(0.9);
         }
+
+        #chartContainer {
+            width: 90%;
+            max-width: 800px;
+            height: 400px; /* Gráfico más alto */
+            margin: 20px auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            padding: 10px;
+        }
     </style>
+    <!-- Incluir Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div id="gValue">0.00 g</div>
     <button id="toggleButton">▶</button>
+    <div id="chartContainer">
+        <canvas id="gChart"></canvas>
+    </div>
 
     <script>
         let audioContext;
@@ -66,10 +70,48 @@
         let filterNode;
         let isPlaying = false;
         let acceleration = { x: 0, y: 0, z: 0 };
-        let lastG = 1;
 
         const toggleButton = document.getElementById('toggleButton');
-        const gValueDisplay = document.getElementById('gValue');
+
+        // Configuración del gráfico
+        const chartConfig = {
+            type: 'line',
+            data: {
+                labels: Array.from({ length: 100 }, (_, i) => (i * 0.05).toFixed(2)), // Eje X: 0 a 5 segundos
+                datasets: [{
+                    label: 'Aceleración (g)',
+                    data: Array(100).fill(0), // Inicializar con ceros
+                    borderColor: '#2196F3',
+                    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Tiempo (s)'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Aceleración (g)'
+                        },
+                        min: 0,
+                        max: 10 // Rango aumentado a 10
+                    }
+                },
+                animation: false,
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        };
+
+        const gChart = new Chart(document.getElementById('gChart'), chartConfig);
 
         function calculateGValue() {
             return Math.sqrt(
@@ -107,17 +149,13 @@
             if (!isPlaying) return;
 
             const currentG = calculateGValue();
-            const deltaG = Math.abs(currentG - lastG);
-            lastG = currentG;
             
-            gValueDisplay.textContent = currentG.toFixed(2) + ' g';
-            
-            // Intensidad proporcional a la variación de g
-            const intensity = Math.min(deltaG * 5, 2);
+            // Intensidad proporcional al valor instantáneo de g
+            const intensity = Math.min(currentG, 10); // Límite superior de 10g
             const now = audioContext.currentTime;
             
             // Control de ganancia
-            gainNode.gain.setTargetAtTime(intensity * 0.3, now, 0.1);
+            gainNode.gain.setTargetAtTime(intensity * 0.1, now, 0.1); // Ajuste de escala
             
             // Modulación dinámica del filtro
             filterNode.frequency.setValueAtTime(800 + (intensity * 600), now);
@@ -126,6 +164,16 @@
             const vibratoDepth = intensity * 5;
             oscillators[0].frequency.setValueAtTime(
                 200 + (Math.sin(now * 8) * vibratoDepth), now);
+
+            // Actualizar gráfico
+            updateChart(currentG);
+        }
+
+        function updateChart(currentG) {
+            const dataset = gChart.data.datasets[0].data;
+            dataset.push(currentG); // Agregar nuevo valor
+            if (dataset.length > 100) dataset.shift(); // Mantener solo los últimos 100 valores
+            gChart.update(); // Actualizar gráfico
         }
 
         async function toggleSound() {
@@ -138,21 +186,33 @@
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 createViolinSound();
                 
+                // Optimización: Usar requestAnimationFrame para mayor eficiencia
+                let lastUpdate = performance.now();
+                const updateInterval = 1000 / 60; // 60 FPS
+
+                const updateLoop = () => {
+                    const now = performance.now();
+                    if (now - lastUpdate >= updateInterval) {
+                        updateSound();
+                        lastUpdate = now;
+                    }
+                    if (isPlaying) requestAnimationFrame(updateLoop);
+                };
+
                 window.addEventListener('devicemotion', (event) => {
                     acceleration = event.accelerationIncludingGravity;
-                    updateSound();
                 });
 
                 toggleButton.textContent = '⏹';
                 toggleButton.style.backgroundColor = '#f44336';
                 isPlaying = true;
+                updateLoop(); // Iniciar el bucle de actualización
             } else {
                 oscillators.forEach(osc => osc.stop());
                 audioContext.close();
                 toggleButton.textContent = '▶';
                 toggleButton.style.backgroundColor = '#2196F3';
                 isPlaying = false;
-                gValueDisplay.textContent = '0.00 g';
             }
         }
 
