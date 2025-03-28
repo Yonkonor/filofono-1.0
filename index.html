@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Violín por Acelerómetro</title>
     <style>
+        /* Estilos anteriores se mantienen */
         body {
             display: flex;
             flex-direction: column;
@@ -67,7 +68,6 @@
             padding: 10px;
         }
     </style>
-    <!-- Incluir Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -84,18 +84,21 @@
         let filterNode;
         let isPlaying = false;
         let acceleration = { x: 0, y: 0, z: 0 };
+        let startTime;
+        let lastUpdate = 0;
+        const updateInterval = 50; // 50ms para actualizaciones
 
         const toggleButton = document.getElementById('toggleButton');
         const gValueDisplay = document.getElementById('gValue');
+        const frequencies = [200, 400, 600, 800];
 
         // Configuración del gráfico
         const chartConfig = {
             type: 'line',
             data: {
-                labels: Array.from({ length: 100 }, (_, i) => (i * 0.05).toFixed(2)), // Eje X: 0 a 5 segundos
                 datasets: [{
                     label: 'Aceleración (g)',
-                    data: Array(100).fill(0), // Inicializar con ceros
+                    data: [],
                     borderColor: '#2196F3',
                     backgroundColor: 'rgba(33, 150, 243, 0.1)',
                     borderWidth: 2,
@@ -106,16 +109,13 @@
             options: {
                 scales: {
                     x: {
-                        title: {
-                            display: true,
-                            text: 'Tiempo (s)'
-                        }
+                        type: 'linear',
+                        title: { display: true, text: 'Tiempo (s)' },
+                        min: 0,
+                        max: 5
                     },
                     y: {
-                        title: {
-                            display: true,
-                            text: 'Aceleración (g)'
-                        },
+                        title: { display: true, text: 'Aceleración (g)' },
                         min: 0,
                         max: 3
                     }
@@ -129,19 +129,18 @@
         const gChart = new Chart(document.getElementById('gChart'), chartConfig);
 
         function calculateGValue() {
-            return Math.sqrt(
-                acceleration.x ** 2 +
-                acceleration.y ** 2 +
-                acceleration.z ** 2
+            return Math.hypot(
+                acceleration.x,
+                acceleration.y,
+                acceleration.z
             ) / 9.81;
         }
 
         function createViolinSound() {
-            const frequencies = [200, 400, 600, 800];
-            oscillators = frequencies.map(freq => {
+            oscillators = frequencies.map((freq, i) => {
                 const osc = audioContext.createOscillator();
                 osc.type = 'sawtooth';
-                osc.frequency.value = freq;
+                osc.frequency.value = freq + i * 0.5; // Detune leve
                 return osc;
             });
 
@@ -160,56 +159,87 @@
             oscillators.forEach(osc => osc.start());
         }
 
-        function updateSound() {
-            if (!isPlaying) return;
-
+        function updateSound(timestamp) {
             const currentG = calculateGValue();
             gValueDisplay.textContent = currentG.toFixed(2) + ' g';
             
-            // Intensidad proporcional al valor instantáneo de g
             const intensity = Math.min(currentG, 2);
             const now = audioContext.currentTime;
             
-            // Control de ganancia
+            // Control de ganancia y filtro
             gainNode.gain.setTargetAtTime(intensity * 0.3, now, 0.1);
+            filterNode.frequency.setValueAtTime(800 + intensity * 600, now);
+            filterNode.Q.setValueAtTime(2 + intensity * 2, now);
             
-            // Modulación dinámica del filtro
-            filterNode.frequency.setValueAtTime(800 + (intensity * 600), now);
-            
-            // Vibrato proporcional a la intensidad
+            // Vibrato en todos los osciladores
+            const vibratoFreq = 8; // Hz
             const vibratoDepth = intensity * 5;
-            oscillators[0].frequency.setValueAtTime(
-                200 + (Math.sin(now * 8) * vibratoDepth), now);
+            oscillators.forEach((osc, i) => {
+                osc.frequency.setValueAtTime(
+                    frequencies[i] + Math.sin(now * vibratoFreq * Math.PI * 2) * vibratoDepth,
+                    now
+                );
+            });
 
-            // Actualizar gráfico
-            updateChart(currentG);
+            // Actualizar gráfico cada 50ms
+            if (timestamp - lastUpdate >= updateInterval) {
+                updateChart(currentG, (timestamp - startTime) / 1000);
+                lastUpdate = timestamp;
+            }
         }
 
-        function updateChart(currentG) {
+        function updateChart(gValue, currentTime) {
             const dataset = gChart.data.datasets[0].data;
-            dataset.push(currentG); // Agregar nuevo valor
-            if (dataset.length > 100) dataset.shift(); // Mantener solo los últimos 100 valores
-            gChart.update(); // Actualizar gráfico
+            dataset.push({ x: currentTime, y: gValue });
+            
+            // Mantener solo últimos 5 segundos
+            const cutoff = currentTime - 5;
+            while (dataset.length > 0 && dataset[0].x < cutoff) {
+                dataset.shift();
+            }
+            
+            // Actualizar ejes
+            if (dataset.length > 0) {
+                gChart.options.scales.x.min = Math.max(dataset[0].x, 0);
+                gChart.options.scales.x.max = dataset[0].x + 5;
+            }
+            
+            gChart.update();
         }
 
         async function toggleSound() {
             if (!isPlaying) {
-                if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                    const permission = await DeviceMotionEvent.requestPermission();
-                    if (permission !== 'granted') return;
+                try {
+                    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                        const permission = await DeviceMotionEvent.requestPermission();
+                        if (permission !== 'granted') {
+                            alert('Permiso requerido para usar el sensor.');
+                            return;
+                        }
+                    }
+
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    startTime = Date.now();
+                    lastUpdate = startTime;
+                    createViolinSound();
+                    
+                    window.addEventListener('devicemotion', (e) => {
+                        acceleration = e.accelerationIncludingGravity;
+                        updateSound(Date.now());
+                    });
+
+                    // Reiniciar gráfico
+                    gChart.data.datasets[0].data = [];
+                    gChart.options.scales.x.min = 0;
+                    gChart.options.scales.x.max = 5;
+                    gChart.update();
+
+                    toggleButton.textContent = '⏹';
+                    toggleButton.style.backgroundColor = '#f44336';
+                    isPlaying = true;
+                } catch (error) {
+                    alert('Error: ' + error.message);
                 }
-
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                createViolinSound();
-                
-                window.addEventListener('devicemotion', (event) => {
-                    acceleration = event.accelerationIncludingGravity;
-                    updateSound();
-                });
-
-                toggleButton.textContent = '⏹';
-                toggleButton.style.backgroundColor = '#f44336';
-                isPlaying = true;
             } else {
                 oscillators.forEach(osc => osc.stop());
                 audioContext.close();
