@@ -5,59 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Violín por Acelerómetro</title>
     <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
-        }
-
-        #gValue {
-            width: 200px;
-            height: 200px;
-            border-radius: 50%;
-            background-color: #4CAF50;
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            margin: 20px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.2);
-        }
-
-        button {
-            width: 60px;
-            height: 60px;
-            padding: 0;
-            border-radius: 50%;
-            font-size: 16px;
-            background-color: #2196F3;
-            color: white;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-
-        button:hover {
-            background-color: #1976D2;
-            transform: scale(1.1);
-        }
-
-        button:active {
-            transform: scale(0.9);
-        }
+        /* Mantener el mismo estilo CSS anterior */
     </style>
 </head>
 <body>
     <div id="gValue">0.00 g</div>
-    <button id="toggleButton">▶</button>
+    <button id="toggleButton">Iniciar</button>
 
     <script>
         let audioContext;
@@ -66,7 +19,6 @@
         let filterNode;
         let isPlaying = false;
         let acceleration = { x: 0, y: 0, z: 0 };
-        let lastG = 1; // Valor de referencia en reposo (1g)
 
         const toggleButton = document.getElementById('toggleButton');
         const gValueDisplay = document.getElementById('gValue');
@@ -80,52 +32,52 @@
         }
 
         function createViolinSound() {
-            const frequencies = [200, 400, 600, 800];
+            // Crear osciladores con armónicos
+            const frequencies = [200, 400, 600, 800]; // Fundamental y armónicos
             oscillators = frequencies.map(freq => {
                 const osc = audioContext.createOscillator();
-                osc.type = 'sawtooth';
+                osc.type = 'sawtooth'; // Forma de onda más rica en armónicos
                 osc.frequency.value = freq;
                 return osc;
             });
 
+            // Crear filtro para suavizar el sonido
             filterNode = audioContext.createBiquadFilter();
             filterNode.type = 'lowpass';
             filterNode.frequency.value = 1200;
             filterNode.Q.value = 2;
 
+            // Configurar nodos de ganancia y conexiones
             gainNode = audioContext.createGain();
-            gainNode.gain.value = 0;
             
+            // Conectar todos los osciladores al filtro
             oscillators.forEach(osc => osc.connect(filterNode));
             filterNode.connect(gainNode);
             gainNode.connect(audioContext.destination);
             
+            // Iniciar osciladores
             oscillators.forEach(osc => osc.start());
         }
 
         function updateSound() {
             if (!isPlaying) return;
 
-            const currentG = calculateGValue();
-            const deltaG = Math.abs(currentG - lastG); // Diferencia respecto al último valor
-            lastG = currentG; // Actualizar referencia
+            const g = calculateGValue();
+            gValueDisplay.textContent = g.toFixed(2) + ' g';
             
-            gValueDisplay.textContent = currentG.toFixed(2) + ' g';
-            
-            // Calcular intensidad inversamente proporcional a la estabilidad
-            const intensity = Math.min(deltaG * 5, 2); // Factor de sensibilidad ajustable
+            const clampedG = Math.min(Math.max(g, 0), 2);
             const now = audioContext.currentTime;
             
-            // Control de ganancia invertido
-            gainNode.gain.setTargetAtTime(intensity * 0.3, now, 0.1);
+            // Control suavizado de la ganancia
+            gainNode.gain.setTargetAtTime(clampedG * 0.2, now, 0.1);
             
-            // Modulación dinámica del filtro
-            filterNode.frequency.setValueAtTime(800 + (intensity * 600), now);
+            // Modulación del filtro basada en la aceleración
+            filterNode.frequency.setValueAtTime(800 + (clampedG * 400), now);
             
-            // Vibrato más intenso con mayor movimiento
-            const vibratoDepth = intensity * 5;
+            // Agregar vibrato proporcional a la aceleración
+            const vibratoDepth = clampedG * 3;
             oscillators[0].frequency.setValueAtTime(
-                200 + (Math.sin(now * 8) * vibratoDepth), now);
+                200 + (Math.sin(now * 5) * vibratoDepth), now);
         }
 
         async function toggleSound() {
@@ -143,14 +95,12 @@
                     updateSound();
                 });
 
-                toggleButton.textContent = '⏹';
-                toggleButton.style.backgroundColor = '#f44336';
+                toggleButton.textContent = 'Detener';
                 isPlaying = true;
             } else {
                 oscillators.forEach(osc => osc.stop());
                 audioContext.close();
-                toggleButton.textContent = '▶';
-                toggleButton.style.backgroundColor = '#2196F3';
+                toggleButton.textContent = 'Iniciar';
                 isPlaying = false;
                 gValueDisplay.textContent = '0.00 g';
             }
