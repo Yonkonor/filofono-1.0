@@ -168,7 +168,7 @@
                 return;
             }
 
-            const intensity = Math.min(Math.pow(currentG, 1.5), 2);
+            const intensity = Math.min(Math.pow(currentG, 1.1), 2);
             const now = audioContext.currentTime;
             
             gainNode.gain.setTargetAtTime(intensity * 0.3, now, 0.1);
