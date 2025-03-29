@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Violín por Aceleración</title>
+    <title>Violín por Aceleración - Versión Estable</title>
     <style>
         body {
             display: flex;
@@ -85,7 +85,6 @@
         let acceleration = { x: 0, y: 0, z: 0 };
         let startTime;
         let lastUpdate = 0;
-        const updateInterval = 50;
 
         const toggleButton = document.getElementById('toggleButton');
         const gValueDisplay = document.getElementById('gValue');
@@ -184,7 +183,7 @@
                 );
             });
 
-            if (timestamp - lastUpdate >= updateInterval) {
+            if (timestamp - lastUpdate >= 50) {
                 updateChart(currentG, (timestamp - startTime) / 1000);
                 lastUpdate = timestamp;
             }
@@ -224,7 +223,7 @@
                     createViolinSound();
                     
                     window.addEventListener('devicemotion', (e) => {
-                        acceleration = e.acceleration; // Usamos aceleración real
+                        acceleration = e.accelerationIncludingGravity;
                         updateSound(Date.now());
                     });
 
