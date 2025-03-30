@@ -9,6 +9,17 @@ body {
     height: 100vh;
 }
 
+/* Bloqueo de orientación para móviles */
+@media screen and (min-width: 320px) and (max-width: 767px) {
+    body {
+        transform: rotate(0deg);
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        position: fixed;
+    }
+}
+
 #gValue {
     width: 200px;
     height: 200px;
