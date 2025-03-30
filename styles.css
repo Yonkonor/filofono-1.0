@@ -1,43 +1,61 @@
-/* styles.css */
-
-/* Reset de márgenes y padding */
-* {
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
+    height: 100vh;
 }
 
-body {
+#gValue {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background-color: #4CAF50;
+    color: white;
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
-    background-color: #f0f0f0;
-    touch-action: none; /* Previene comportamientos por defecto en dispositivos táctiles */
+    font-size: 24px;
+    margin: 20px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.2);
 }
 
-.slider-container {
-    width: 80%;
-}
-
-.slider {
-    position: relative;
-    width: 100%;
-    height: 10px; /* Barra angosta */
-    background-color: black;
-    border-radius: 5px;
-}
-
-.slider-button {
-    position: absolute;
-    top: 50%;
-    left: 50%; /* Posición inicial en el centro */
-    transform: translate(-50%, -50%);
-    width: 30px;
-    height: 30px;
-    background-color: cyan;
+button {
+    width: 60px;
+    height: 60px;
+    padding: 0;
     border-radius: 50%;
-    touch-action: none; /* Para manejar eventos táctiles correctamente */
+    font-size: 16px;
+    background-color: #2196F3;
+    color: white;
+    border: none;
     cursor: pointer;
-    transition: left 0.3s; /* Suaviza el retorno al centro */
+    transition: all 0.3s;
+    margin: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+button:hover {
+    background-color: #1976D2;
+    transform: scale(1.1);
+}
+
+button:active {
+    transform: scale(0.9);
+}
+
+#chartContainer {
+    width: 90%;
+    max-width: 800px;
+    margin: 20px auto;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    padding: 10px;
 }
