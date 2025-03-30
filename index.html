@@ -1,10 +1,80 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- ... (mantenemos el mismo estilo) ... -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Violín por Aceleración</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+        }
+
+        #gValue {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background-color: #4CAF50;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            margin: 20px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+
+        button {
+            width: 60px;
+            height: 60px;
+            padding: 0;
+            border-radius: 50%;
+            font-size: 16px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        button:hover {
+            background-color: #1976D2;
+            transform: scale(1.1);
+        }
+
+        button:active {
+            transform: scale(0.9);
+        }
+
+        #chartContainer {
+            width: 90%;
+            max-width: 800px;
+            margin: 20px auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            padding: 10px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <!-- ... (elementos HTML anteriores iguales) ... -->
+    <div id="gValue">0.00 g</div>
+    <button id="toggleButton">▶</button>
+    <div id="chartContainer">
+        <canvas id="gChart"></canvas>
+    </div>
 
     <script>
         let audioContext;
@@ -18,27 +88,64 @@
 
         const toggleButton = document.getElementById('toggleButton');
         const gValueDisplay = document.getElementById('gValue');
-        const frequencies = [293.7, 440, 659];  // Nuevas frecuencias
+        const frequencies = [293.7, 440, 659]; // Frecuencias actualizadas
 
-        // ... (configuración del chart igual) ...
+        const chartConfig = {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Aceleración (g)',
+                    data: [],
+                    borderColor: '#2196F3',
+                    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        type: 'linear',
+                        title: { display: true, text: 'Tiempo (s)' },
+                        min: 0,
+                        max: 5
+                    },
+                    y: {
+                        title: { display: true, text: 'Aceleración (g)' },
+                        min: 0,
+                        max: 3
+                    }
+                },
+                animation: false,
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        };
+
+        const gChart = new Chart(document.getElementById('gChart'), chartConfig);
 
         function calculateGValue() {
-            return Math.hypot(filteredAccel.x, filteredAccel.y, filteredAccel.z) / 9.81;
+            return Math.hypot(
+                filteredAccel.x,
+                filteredAccel.y,
+                filteredAccel.z
+            ) / 9.81;
         }
 
         function createViolinSound() {
-            oscillators = frequencies.map((freq, i) => {
+            oscillators = frequencies.map((freq) => {
                 const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
+                const gainNode = audioContext.createGain();
                 
                 osc.type = 'sawtooth';
                 osc.frequency.value = freq;
-                gain.gain.value = 0;
+                gainNode.gain.value = 0;
                 
-                osc.connect(gain);
-                gain.connect(audioContext.destination);
+                osc.connect(gainNode);
+                gainNode.connect(audioContext.destination);
                 
-                return { osc, gain };
+                return { osc, gainNode };
             });
 
             oscillators.forEach(obj => obj.osc.start());
@@ -50,7 +157,7 @@
             
             if (totalG < silenceThreshold) {
                 oscillators.forEach(obj => {
-                    obj.gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+                    obj.gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
                 });
                 gValueDisplay.textContent = '0.00 g';
                 updateChart(0, (timestamp - startTime) / 1000);
@@ -59,15 +166,14 @@
 
             const now = audioContext.currentTime;
             const intensities = [
-                Math.min(Math.pow(Math.abs(filteredAccel.x / 9.81), 1.5),  // Intensidad X
-                Math.min(Math.pow(Math.abs(filteredAccel.y / 9.81), 1.5),  // Intensidad Y
-                Math.min(Math.pow(Math.abs(filteredAccel.z / 9.81), 1.5)   // Intensidad Z
+                Math.min(Math.pow(Math.abs(filteredAccel.x / 9.81), 1.5), 2), // Intensidad X
+                Math.min(Math.pow(Math.abs(filteredAccel.y / 9.81), 1.5), 2), // Intensidad Y
+                Math.min(Math.pow(Math.abs(filteredAccel.z / 9.81), 1.5), 2)  // Intensidad Z
             ];
 
             oscillators.forEach((obj, i) => {
-                obj.gain.gain.setTargetAtTime(intensities[i] * 0.3, now, 0.1);
+                obj.gainNode.gain.setTargetAtTime(intensities[i] * 0.3, now, 0.1);
                 
-                // Vibrato individual para cada oscilador
                 const vibratoFreq = 8;
                 const vibratoDepth = intensities[i] * 5;
                 obj.osc.frequency.setValueAtTime(
@@ -82,12 +188,33 @@
             }
         }
 
-        // ... (resto del código igual hasta toggleSound) ...
+        function updateChart(gValue, currentTime) {
+            const dataset = gChart.data.datasets[0].data;
+            dataset.push({ x: currentTime, y: gValue });
+            
+            const cutoff = currentTime - 5;
+            while (dataset.length > 0 && dataset[0].x < cutoff) {
+                dataset.shift();
+            }
+            
+            if (dataset.length > 0) {
+                gChart.options.scales.x.min = Math.max(dataset[0].x, 0);
+                gChart.options.scales.x.max = dataset[0].x + 5;
+            }
+            
+            gChart.update();
+        }
 
         async function toggleSound() {
             if (!isPlaying) {
                 try {
-                    // ... (código de permisos igual) ...
+                    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                        const permission = await DeviceMotionEvent.requestPermission();
+                        if (permission !== 'granted') {
+                            alert('Se requieren permisos para usar el sensor.');
+                            return;
+                        }
+                    }
 
                     audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     startTime = Date.now();
@@ -104,8 +231,14 @@
                         updateSound(Date.now());
                     });
 
-                    // ... (configuración del chart igual) ...
+                    gChart.data.datasets[0].data = [];
+                    gChart.options.scales.x.min = 0;
+                    gChart.options.scales.x.max = 5;
+                    gChart.update();
 
+                    toggleButton.textContent = '⏹';
+                    toggleButton.style.backgroundColor = '#f44336';
+                    isPlaying = true;
                 } catch (error) {
                     alert('Error: ' + error.message);
                 }
