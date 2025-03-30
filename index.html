@@ -83,6 +83,8 @@
         let filterNode;
         let isPlaying = false;
         let acceleration = { x: 0, y: 0, z: 0 };
+        let filteredAccel = { x: 0, y: 0, z: 0 }; // Datos filtrados
+        const alpha = 0.2; // Factor de suavizado
         let startTime;
         let lastUpdate = 0;
         const updateInterval = 50;
@@ -128,9 +130,9 @@
 
         function calculateGValue() {
             return Math.hypot(
-                acceleration.x,
-                acceleration.y,
-                acceleration.z
+                filteredAccel.x, // Usar valores filtrados
+                filteredAccel.y,
+                filteredAccel.z
             ) / 9.81;
         }
 
@@ -223,8 +225,15 @@
                     lastUpdate = startTime;
                     createViolinSound();
                     
+                    // Resetear valores filtrados
+                    filteredAccel = { x: 0, y: 0, z: 0 };
+                    
                     window.addEventListener('devicemotion', (e) => {
-                        acceleration = e.acceleration; // Usamos aceleración real
+                        // Aplicar filtro low-pass a cada eje
+                        filteredAccel.x = alpha * e.acceleration.x + (1 - alpha) * filteredAccel.x;
+                        filteredAccel.y = alpha * e.acceleration.y + (1 - alpha) * filteredAccel.y;
+                        filteredAccel.z = alpha * e.acceleration.z + (1 - alpha) * filteredAccel.z;
+                        
                         updateSound(Date.now());
                     });
 
