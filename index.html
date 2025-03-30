@@ -2,401 +2,253 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Violín por Acelerómetro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Violín por Aceleración - Versión Estable</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-            color: #333;
-            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
         }
-        
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 30px;
+
+        #gValue {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background-color: #4CAF50;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            margin: 20px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
         }
-        
-        .control-panel {
-            background-color: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        
-        #toggleButton {
+
+        button {
+            width: 60px;
+            height: 60px;
+            padding: 0;
+            border-radius: 50%;
+            font-size: 16px;
             background-color: #2196F3;
             color: white;
             border: none;
-            padding: 12px 24px;
-            font-size: 18px;
-            border-radius: 50px;
             cursor: pointer;
             transition: all 0.3s;
-            margin: 10px 0;
-            width: 200px;
+            margin: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
-        
-        #toggleButton:hover {
-            background-color: #0b7dda;
-            transform: scale(1.05);
+
+        button:hover {
+            background-color: #1976D2;
+            transform: scale(1.1);
         }
-        
-        #toggleButton.active {
-            background-color: #f44336;
-            box-shadow: 0 0 15px rgba(244, 67, 54, 0.5);
+
+        button:active {
+            transform: scale(0.9);
         }
-        
-        .g-display {
-            font-size: 24px;
-            margin: 20px 0;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-        
-        .chart-container {
+
+        #chartContainer {
+            width: 90%;
+            max-width: 800px;
+            margin: 20px auto;
             background-color: white;
             border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        
-        canvas {
-            width: 100%;
-            max-height: 300px;
-        }
-        
-        .instructions {
-            margin-top: 30px;
-            text-align: left;
-            background-color: #e8f4f8;
-            padding: 15px;
-            border-radius: 8px;
-            border-left: 5px solid #2196F3;
-        }
-        
-        footer {
-            margin-top: 30px;
-            font-size: 12px;
-            color: #7f8c8d;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            padding: 10px;
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <h1>Violín por Acelerómetro</h1>
-    
-    <div class="control-panel">
-        <p>Mueve tu dispositivo para generar sonido. La intensidad depende de la aceleración.</p>
-        <button id="toggleButton">▶ Reproducir</button>
-        <div class="g-display">Aceleración: <span id="gValue">0.00</span> g</div>
-    </div>
-    
-    <div class="chart-container">
+    <div id="gValue">0.00 g</div>
+    <button id="toggleButton">▶</button>
+    <div id="chartContainer">
         <canvas id="gChart"></canvas>
     </div>
-    
-    <div class="instructions">
-        <h3>Instrucciones:</h3>
-        <ol>
-            <li>Haz clic en "Reproducir" y permite el acceso al sensor de movimiento</li>
-            <li>Mueve tu dispositivo como si fuera un arco de violín</li>
-            <li>Movimientos más rápidos producen sonidos más intensos</li>
-            <li>Haz clic en "Detener" cuando termines</li>
-        </ol>
-        <p><strong>Nota:</strong> Funciona mejor en dispositivos móviles con soporte para sensores de movimiento.</p>
-    </div>
-    
-    <footer>
-        <p>Violín por Acelerómetro - Usa el movimiento de tu dispositivo para crear música</p>
-    </footer>
 
     <script>
-        // Elementos del DOM
-        const toggleButton = document.getElementById('toggleButton');
-        const gValueDisplay = document.getElementById('gValue');
-        const gChartCanvas = document.getElementById('gChart');
-        
-        // Variables de estado
         let audioContext;
         let oscillators = [];
         let gainNode;
+        let filterNode;
         let isPlaying = false;
         let acceleration = { x: 0, y: 0, z: 0 };
-        let lastSensorTimestamp = 0;
-        let lastUIUpdate = 0;
-        let gChart;
-        let chartData = [];
-        const MAX_CHART_POINTS = 100;
-        
-        // Configuración optimizada
-        const audioSettings = {
-            attackTime: 0.005,   // 5ms para ataque rápido
-            releaseTime: 0.01,    // 10ms para release
-            maxGain: 0.3,         // Volumen máximo (evita distorsión)
-            baseFreq: 220,        // Frecuencia base (LA3)
-            vibratoSpeed: 50,     // Velocidad de vibrato (Hz)
-            sensorThrottle: 15    // Intervalo de sensor (15ms ≈ 66Hz)
-        };
-        
-        // Frecuencias armónicas para los osciladores
-        const frequencies = [220, 440, 660, 880];
-        
-        // Inicializar gráfico
-        function initChart() {
-            gChart = new Chart(gChartCanvas.getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: Array(MAX_CHART_POINTS).fill(''),
-                    datasets: [{
-                        label: 'Aceleración (g)',
-                        data: Array(MAX_CHART_POINTS).fill(0),
-                        borderColor: '#2196F3',
-                        backgroundColor: 'rgba(33, 150, 243, 0.1)',
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 3,
-                            title: {
-                                display: true,
-                                text: 'Aceleración (g)'
-                            }
-                        },
-                        x: {
-                            display: false
-                        }
+        let startTime;
+        let lastUpdate = 0;
+
+        const toggleButton = document.getElementById('toggleButton');
+        const gValueDisplay = document.getElementById('gValue');
+        const frequencies = [200, 400, 600, 800];
+
+        const chartConfig = {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Aceleración (g)',
+                    data: [],
+                    borderColor: '#2196F3',
+                    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        type: 'linear',
+                        title: { display: true, text: 'Tiempo (s)' },
+                        min: 0,
+                        max: 5
                     },
-                    animation: {
-                        duration: 0
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
+                    y: {
+                        title: { display: true, text: 'Aceleración (g)' },
+                        min: 0,
+                        max: 3
                     }
-                }
-            });
-        }
-        
-        // Actualizar gráfico
-        function updateChart(gValue) {
-            chartData.push(gValue);
-            if (chartData.length > MAX_CHART_POINTS) {
-                chartData.shift();
+                },
+                animation: false,
+                responsive: true,
+                maintainAspectRatio: false
             }
-            
-            gChart.data.datasets[0].data = chartData;
-            gChart.update();
-        }
-        
-        // Calcular valor G total
+        };
+
+        const gChart = new Chart(document.getElementById('gChart'), chartConfig);
+
         function calculateGValue() {
-            return Math.hypot(acceleration.x, acceleration.y, acceleration.z) / 9.81;
+            return Math.hypot(
+                acceleration.x,
+                acceleration.y,
+                acceleration.z
+            ) / 9.81;
         }
-        
-        // Crear sonido de violín
+
         function createViolinSound() {
-            // Manejo de compatibilidad con navegadores
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            audioContext = new AudioContext({
-                latencyHint: 'interactive', // Priorizar latencia ultra baja
-                sampleRate: 48000          // Mayor tasa de muestreo para mejor calidad
-            });
-            
-            // Crear nodo de ganancia con curva más suave
-            gainNode = audioContext.createGain();
-            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-            gainNode.connect(audioContext.destination);
-            
-            // Tipos de onda para cada oscilador (crea un timbre más interesante)
-            const waveTypes = ['sine', 'triangle', 'sawtooth', 'square'];
-            
-            // Crear osciladores con filtros para un sonido más rico
             oscillators = frequencies.map((freq, i) => {
                 const osc = audioContext.createOscillator();
-                osc.type = waveTypes[i];
-                osc.frequency.value = freq;
-                
-                // Añadir filtro para cada oscilador
-                const filter = audioContext.createBiquadFilter();
-                filter.type = 'bandpass';
-                filter.frequency.value = freq * 1.2;
-                filter.Q.value = 1.0;
-                
-                osc.connect(filter);
-                filter.connect(gainNode);
-                osc.start();
-                
-                return {osc, filter};
+                osc.type = 'sawtooth';
+                osc.frequency.value = freq + i * 0.5;
+                return osc;
             });
+
+            filterNode = audioContext.createBiquadFilter();
+            filterNode.type = 'lowpass';
+            filterNode.frequency.value = 1200;
+            filterNode.Q.value = 2;
+
+            gainNode = audioContext.createGain();
+            gainNode.gain.value = 0;
+            
+            oscillators.forEach(osc => osc.connect(filterNode));
+            filterNode.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillators.forEach(osc => osc.start());
         }
-        
-        // Procesar datos del sensor
-        function processSensorData(event) {
-            const now = performance.now();
+
+        function updateSound(timestamp) {
+            const currentG = calculateGValue();
+            const silenceThreshold = 0.1;
             
-            // Filtrar actualizaciones muy frecuentes
-            if (now - lastSensorTimestamp < audioSettings.sensorThrottle) return;
-            lastSensorTimestamp = now;
-            
-            // Suavizado de datos de aceleración
-            const smoothingFactor = 0.3;
-            acceleration.x = acceleration.x * (1-smoothingFactor) + event.acceleration.x * smoothingFactor;
-            acceleration.y = acceleration.y * (1-smoothingFactor) + event.acceleration.y * smoothingFactor;
-            acceleration.z = acceleration.z * (1-smoothingFactor) + event.acceleration.z * smoothingFactor;
-            
-            // Calcular valor G (limitado a 3g máximo)
-            const currentG = Math.min(calculateGValue(), 3);
-            
-            // Actualización de UI (limitada a ~20fps para mejor rendimiento)
-            if (now - lastUIUpdate > 50) {
-                requestAnimationFrame(() => {
-                    gValueDisplay.textContent = currentG.toFixed(2);
-                    updateChart(currentG);
-                });
-                lastUIUpdate = now;
+            if (currentG < silenceThreshold) {
+                gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+                gValueDisplay.textContent = '0.00 g';
+                updateChart(0, (timestamp - startTime) / 1000);
+                return;
             }
+
+            const intensity = Math.min(Math.pow(currentG, 1.5), 2);
+            const now = audioContext.currentTime;
             
-            // Procesamiento de audio
-            if (audioContext && gainNode) {
-                const audioNow = audioContext.currentTime;
-                const intensity = Math.min(currentG * 1.5, 1.5);
-                const gainValue = intensity * audioSettings.maxGain;
-                
-                if (currentG < 0.05) {
-                    // Silencio cuando no hay movimiento
-                    gainNode.gain.cancelScheduledValues(audioNow);
-                    gainNode.gain.setTargetAtTime(0, audioNow, audioSettings.releaseTime);
-                } else {
-                    // Ajustar ganancia con rampa suave
-                    gainNode.gain.cancelScheduledValues(audioNow);
-                    gainNode.gain.setValueAtTime(gainNode.gain.value, audioNow);
-                    gainNode.gain.linearRampToValueAtTime(gainValue, audioNow + audioSettings.attackTime);
-                    
-                    // Aplicar efectos dinámicos a cada oscilador
-                    oscillators.forEach(({osc, filter}, i) => {
-                        // Vibrato basado en la intensidad
-                        const vibrato = Math.sin(audioNow * audioSettings.vibratoSpeed) * intensity * 15;
-                        
-                        // Ajustar frecuencia base con variaciones dinámicas
-                        const freq = frequencies[i] * (1 + intensity * 0.1) + vibrato;
-                        
-                        // Actualizar oscilador y filtro
-                        osc.frequency.setValueAtTime(freq, audioNow);
-                        filter.frequency.setValueAtTime(freq * 1.5, audioNow);
-                        filter.Q.setValueAtTime(intensity * 2, audioNow);
-                    });
-                }
+            gainNode.gain.setTargetAtTime(intensity * 0.3, now, 0.1);
+            filterNode.frequency.setValueAtTime(800 + intensity * 600, now);
+            filterNode.Q.setValueAtTime(2 + intensity * 2, now);
+            
+            const vibratoFreq = 8;
+            const vibratoDepth = intensity * 5;
+            oscillators.forEach((osc, i) => {
+                osc.frequency.setValueAtTime(
+                    frequencies[i] + Math.sin(now * vibratoFreq * Math.PI * 2) * vibratoDepth,
+                    now
+                );
+            });
+
+            if (timestamp - lastUpdate >= 50) {
+                updateChart(currentG, (timestamp - startTime) / 1000);
+                lastUpdate = timestamp;
             }
         }
-        
-        // Alternar reproducción
+
+        function updateChart(gValue, currentTime) {
+            const dataset = gChart.data.datasets[0].data;
+            dataset.push({ x: currentTime, y: gValue });
+            
+            const cutoff = currentTime - 5;
+            while (dataset.length > 0 && dataset[0].x < cutoff) {
+                dataset.shift();
+            }
+            
+            if (dataset.length > 0) {
+                gChart.options.scales.x.min = Math.max(dataset[0].x, 0);
+                gChart.options.scales.x.max = dataset[0].x + 5;
+            }
+            
+            gChart.update();
+        }
+
         async function toggleSound() {
             if (!isPlaying) {
                 try {
-                    // Verificar compatibilidad con sensores
-                    if (!window.DeviceMotionEvent) {
-                        throw new Error("Tu dispositivo no soporta sensores de movimiento");
-                    }
-                    
-                    // Solicitar permisos en iOS 13+
                     if (typeof DeviceMotionEvent.requestPermission === 'function') {
                         const permission = await DeviceMotionEvent.requestPermission();
                         if (permission !== 'granted') {
-                            throw new Error("Permiso denegado para acceder al sensor de movimiento");
+                            alert('Se requieren permisos para usar el sensor.');
+                            return;
                         }
                     }
-                    
-                    // Configurar listener de sensor con opciones para mejor rendimiento
-                    window.addEventListener('devicemotion', processSensorData, {
-                        passive: true,
-                        capture: false
-                    });
-                    
-                    // Inicializar audio
+
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    startTime = Date.now();
+                    lastUpdate = startTime;
                     createViolinSound();
                     
-                    // Actualizar UI
-                    toggleButton.textContent = '⏹ Detener';
-                    toggleButton.classList.add('active');
+                    window.addEventListener('devicemotion', (e) => {
+                        acceleration = e.accelerationIncludingGravity;
+                        updateSound(Date.now());
+                    });
+
+                    gChart.data.datasets[0].data = [];
+                    gChart.options.scales.x.min = 0;
+                    gChart.options.scales.x.max = 5;
+                    gChart.update();
+
+                    toggleButton.textContent = '⏹';
+                    toggleButton.style.backgroundColor = '#f44336';
                     isPlaying = true;
-                    
-                    // Inicializar datos del gráfico
-                    chartData = Array(MAX_CHART_POINTS).fill(0);
-                    updateChart(0);
-                    
                 } catch (error) {
-                    console.error("Error al iniciar:", error);
-                    alert(`Error: ${error.message}`);
+                    alert('Error: ' + error.message);
                 }
             } else {
-                // Limpieza completa
-                window.removeEventListener('devicemotion', processSensorData);
-                
-                if (audioContext) {
-                    // Apagado suave del audio
-                    gainNode.gain.cancelScheduledValues(audioContext.currentTime);
-                    gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
-                    
-                    // Detener osciladores después del fadeout
-                    setTimeout(() => {
-                        oscillators.forEach(({osc}) => osc.stop());
-                        audioContext.close();
-                    }, 100);
-                }
-                
-                // Resetear estado
-                oscillators = [];
-                audioContext = null;
-                
-                // Restaurar UI
-                toggleButton.textContent = '▶ Reproducir';
-                toggleButton.classList.remove('active');
+                oscillators.forEach(osc => osc.stop());
+                audioContext.close();
+                toggleButton.textContent = '▶';
+                toggleButton.style.backgroundColor = '#2196F3';
                 isPlaying = false;
+                gValueDisplay.textContent = '0.00 g';
             }
         }
-        
-        // Inicializar la aplicación
-        function initApp() {
-            // Inicializar gráfico
-            initChart();
-            
-            // Configurar botón
-            toggleButton.addEventListener('click', toggleSound);
-            
-            // Manejar pausa cuando la página pierde foco
-            document.addEventListener('visibilitychange', () => {
-                if (document.hidden && isPlaying) {
-                    toggleSound();
-                }
-            });
-            
-            // Mostrar advertencia si no hay soporte para sensores
-            if (!window.DeviceMotionEvent) {
-                alert("Advertencia: Tu navegador o dispositivo no soporta sensores de movimiento. La aplicación no funcionará correctamente.");
-            }
-        }
-        
-        // Iniciar cuando el DOM esté listo
-        if (document.readyState === 'complete') {
-            initApp();
-        } else {
-            document.addEventListener('DOMContentLoaded', initApp);
-        }
+
+        toggleButton.addEventListener('click', toggleSound);
     </script>
-    
-    <!-- Librería Chart.js para el gráfico -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>
