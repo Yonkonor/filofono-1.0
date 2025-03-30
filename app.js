@@ -1,57 +1,22 @@
 let audioContext;
 let oscillators = [];
 let isPlaying = false;
-let filteredAccel = { x: 0, y: 0, z: 0 };
+let velocity = { x: 0, y: 0, z: 0 }; // Cambiamos a velocidad
+let lastUpdateTime = Date.now();
 const alpha = 0.2;
 let startTime;
 let lastUpdate = 0;
 const updateInterval = 50;
+const decayFactor = 0.98; // Factor de reducción de velocidad
 
 const toggleButton = document.getElementById('toggleButton');
 const gValueDisplay = document.getElementById('gValue');
 const frequencies = [293.7, 440, 659];
 
-const chartConfig = {
-    type: 'line',
-    data: {
-        datasets: [{
-            label: 'Aceleración (g)',
-            data: [],
-            borderColor: '#2196F3',
-            backgroundColor: 'rgba(33, 150, 243, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4
-        }]
-    },
-    options: {
-        scales: {
-            x: {
-                type: 'linear',
-                title: { display: true, text: 'Tiempo (s)' },
-                min: 0,
-                max: 5
-            },
-            y: {
-                title: { display: true, text: 'Aceleración (g)' },
-                min: 0,
-                max: 3
-            }
-        },
-        animation: false,
-        responsive: true,
-        maintainAspectRatio: false
-    }
-};
-
-const gChart = new Chart(document.getElementById('gChart'), chartConfig);
+// ... (configuración del chart igual) ...
 
 function calculateGValue() {
-    return Math.hypot(
-        filteredAccel.x,
-        filteredAccel.y,
-        filteredAccel.z
-    ) / 9.81;
+    return Math.hypot(velocity.x, velocity.y, velocity.z) / 9.81; // Mantenemos escala en g
 }
 
 function createViolinSound() {
@@ -87,9 +52,9 @@ function updateSound(timestamp) {
 
     const now = audioContext.currentTime;
     const intensities = [
-        Math.min(Math.pow(Math.abs(filteredAccel.x / 9.81), 1.5), 2),
-        Math.min(Math.pow(Math.abs(filteredAccel.y / 9.81), 1.5), 2),
-        Math.min(Math.pow(Math.abs(filteredAccel.z / 9.81), 1.5), 2)
+        Math.min(Math.pow(Math.abs(velocity.x / 9.81), 1.5), 2), // Escalamos a g
+        Math.min(Math.pow(Math.abs(velocity.y / 9.81), 1.5), 2),
+        Math.min(Math.pow(Math.abs(velocity.z / 9.81), 1.5), 2)
     ];
 
     oscillators.forEach((obj, i) => {
@@ -109,23 +74,6 @@ function updateSound(timestamp) {
     }
 }
 
-function updateChart(gValue, currentTime) {
-    const dataset = gChart.data.datasets[0].data;
-    dataset.push({ x: currentTime, y: gValue });
-    
-    const cutoff = currentTime - 5;
-    while (dataset.length > 0 && dataset[0].x < cutoff) {
-        dataset.shift();
-    }
-    
-    if (dataset.length > 0) {
-        gChart.options.scales.x.min = Math.max(dataset[0].x, 0);
-        gChart.options.scales.x.max = dataset[0].x + 5;
-    }
-    
-    gChart.update();
-}
-
 async function toggleSound() {
     if (!isPlaying) {
         try {
@@ -142,13 +90,24 @@ async function toggleSound() {
             lastUpdate = startTime;
             createViolinSound();
             
-            filteredAccel = { x: 0, y: 0, z: 0 };
+            velocity = { x: 0, y: 0, z: 0 };
+            let lastTimestamp = Date.now();
             
             window.addEventListener('devicemotion', (e) => {
-                filteredAccel.x = alpha * e.acceleration.x + (1 - alpha) * filteredAccel.x;
-                filteredAccel.y = alpha * e.acceleration.y + (1 - alpha) * filteredAccel.y;
-                filteredAccel.z = alpha * e.acceleration.z + (1 - alpha) * filteredAccel.z;
+                const now = Date.now();
+                const dt = (now - lastTimestamp) / 1000; // Tiempo en segundos
                 
+                // Integración de la aceleración para obtener velocidad
+                velocity.x = alpha * (velocity.x + e.acceleration.x * dt) + (1 - alpha) * velocity.x;
+                velocity.y = alpha * (velocity.y + e.acceleration.y * dt) + (1 - alpha) * velocity.y;
+                velocity.z = alpha * (velocity.z + e.acceleration.z * dt) + (1 - alpha) * velocity.z;
+                
+                // Aplicar reducción gradual de velocidad
+                velocity.x *= decayFactor;
+                velocity.y *= decayFactor;
+                velocity.z *= decayFactor;
+                
+                lastTimestamp = now;
                 updateSound(Date.now());
             });
 
