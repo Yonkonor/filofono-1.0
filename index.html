@@ -2,8 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="screen-orientation" content="portrait">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Violín por Aceleración</title>
     <style>
         body {
@@ -13,21 +12,8 @@
             font-family: Arial, sans-serif;
             background-color: #f0f0f0;
             margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-        }
-
-        @media (orientation: landscape) {
-            body {
-                transform: rotate(90deg);
-                transform-origin: left top;
-                width: 100vh;
-                height: 100vw;
-                overflow-x: hidden;
-                position: absolute;
-                top: 100%;
-                left: 0;
-            }
+            padding: 0;
+            height: 100vh;
         }
 
         #gValue {
@@ -80,21 +66,11 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
             padding: 10px;
         }
-
-        #directionIndicator {
-            width: 100px;
-            height: 100px;
-            background: radial-gradient(circle, #2196F3 10%, transparent 70%);
-            position: relative;
-            transform-style: preserve-3d;
-            margin: 20px;
-        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div id="gValue">0.00 g</div>
-    <div id="directionIndicator"></div>
     <button id="toggleButton">▶</button>
     <div id="chartContainer">
         <canvas id="gChart"></canvas>
@@ -109,11 +85,10 @@
         let startTime;
         let lastUpdate = 0;
         const updateInterval = 50;
-        let wakeLock = null;
 
         const toggleButton = document.getElementById('toggleButton');
         const gValueDisplay = document.getElementById('gValue');
-        const frequencies = [293.7, 440, 659];
+        const frequencies = [293.7, 440, 659]; // Frecuencias actualizadas
 
         const chartConfig = {
             type: 'line',
@@ -150,27 +125,12 @@
 
         const gChart = new Chart(document.getElementById('gChart'), chartConfig);
 
-        async function acquireWakeLock() {
-            try {
-                wakeLock = await navigator.wakeLock.request('screen');
-            } catch (err) {
-                console.error('Error al activar wake lock:', err);
-            }
-        }
-
         function calculateGValue() {
             return Math.hypot(
                 filteredAccel.x,
                 filteredAccel.y,
                 filteredAccel.z
             ) / 9.81;
-        }
-
-        function updateDirectionIndicator() {
-            const indicator = document.getElementById('directionIndicator');
-            const xRot = (filteredAccel.y / 9.81) * 45;
-            const yRot = (filteredAccel.x / 9.81) * 45;
-            indicator.style.transform = `rotateX(${xRot}deg) rotateY(${yRot}deg)`;
         }
 
         function createViolinSound() {
@@ -195,8 +155,6 @@
             const totalG = calculateGValue();
             const silenceThreshold = 0.1;
             
-            updateDirectionIndicator();
-            
             if (totalG < silenceThreshold) {
                 oscillators.forEach(obj => {
                     obj.gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
@@ -208,9 +166,9 @@
 
             const now = audioContext.currentTime;
             const intensities = [
-                Math.min(Math.pow(Math.abs(filteredAccel.x / 9.81), 1.5), 2),
-                Math.min(Math.pow(Math.abs(filteredAccel.y / 9.81), 1.5), 2),
-                Math.min(Math.pow(Math.abs(filteredAccel.z / 9.81), 1.5), 2)
+                Math.min(Math.pow(Math.abs(filteredAccel.x / 9.81), 1.5), 2), // Intensidad X
+                Math.min(Math.pow(Math.abs(filteredAccel.y / 9.81), 1.5), 2), // Intensidad Y
+                Math.min(Math.pow(Math.abs(filteredAccel.z / 9.81), 1.5), 2)  // Intensidad Z
             ];
 
             oscillators.forEach((obj, i) => {
@@ -225,7 +183,6 @@
             });
 
             if (timestamp - lastUpdate >= updateInterval) {
-                gValueDisplay.textContent = `${totalG.toFixed(2)} g`;
                 updateChart(totalG, (timestamp - startTime) / 1000);
                 lastUpdate = timestamp;
             }
@@ -259,12 +216,6 @@
                         }
                     }
 
-                    await acquireWakeLock();
-                    
-                    if (screen.orientation && screen.orientation.lock) {
-                        await screen.orientation.lock('portrait');
-                    }
-
                     audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     startTime = Date.now();
                     lastUpdate = startTime;
@@ -294,16 +245,6 @@
             } else {
                 oscillators.forEach(obj => obj.osc.stop());
                 audioContext.close();
-                
-                if (screen.orientation && screen.orientation.unlock) {
-                    screen.orientation.unlock();
-                }
-                
-                if (wakeLock) {
-                    wakeLock.release();
-                    wakeLock = null;
-                }
-
                 toggleButton.textContent = '▶';
                 toggleButton.style.backgroundColor = '#2196F3';
                 isPlaying = false;
@@ -311,28 +252,7 @@
             }
         }
 
-        document.addEventListener('visibilitychange', async () => {
-            if (wakeLock !== null && document.visibilityState === 'visible') {
-                await acquireWakeLock();
-            }
-        });
-
         toggleButton.addEventListener('click', toggleSound);
-
-        // Polyfills
-        if (!screen.orientation) {
-            screen.orientation = {
-                lock: function() { return Promise.resolve(); },
-                unlock: function() {},
-                type: 'portrait-primary'
-            };
-        }
-
-        if ('wakeLock' in navigator === false) {
-            navigator.wakeLock = {
-                request: () => Promise.resolve({ release: () => {} })
-            };
-        }
     </script>
 </body>
 </html>
