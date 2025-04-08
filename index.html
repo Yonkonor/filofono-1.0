@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Violín por Aceleración</title>
+    <title>Violín por Velocidad</title>
     <style>
+        /* Estilos iguales se mantienen */
         body {
             display: flex;
             flex-direction: column;
@@ -70,7 +71,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div id="gValue">0.00 g</div>
+    <div id="gValue">0.00 m/s</div>
     <button id="toggleButton">▶</button>
     <div id="chartContainer">
         <canvas id="gChart"></canvas>
@@ -80,21 +81,22 @@
         let audioContext;
         let oscillators = [];
         let isPlaying = false;
-        let filteredAccel = { x: 0, y: 0, z: 0 };
-        const alpha = 0.2;
+        let filteredVelocity = { x: 0, y: 0, z: 0 };
+        let lastUpdateTime = 0;
+        const velocityDecay = 0.97;
         let startTime;
-        let lastUpdate = 0;
+        let lastChartUpdate = 0;
         const updateInterval = 50;
 
         const toggleButton = document.getElementById('toggleButton');
         const gValueDisplay = document.getElementById('gValue');
-        const frequencies = [293.7, 440, 659]; // Frecuencias actualizadas
+        const frequencies = [293.7, 440, 659];
 
         const chartConfig = {
             type: 'line',
             data: {
                 datasets: [{
-                    label: 'Aceleración (g)',
+                    label: 'Velocidad (m/s)',
                     data: [],
                     borderColor: '#2196F3',
                     backgroundColor: 'rgba(33, 150, 243, 0.1)',
@@ -112,7 +114,7 @@
                         max: 5
                     },
                     y: {
-                        title: { display: true, text: 'Aceleración (g)' },
+                        title: { display: true, text: 'Velocidad (m/s)' },
                         min: 0,
                         max: 3
                     }
@@ -125,12 +127,12 @@
 
         const gChart = new Chart(document.getElementById('gChart'), chartConfig);
 
-        function calculateGValue() {
+        function calculateVelocityMagnitude() {
             return Math.hypot(
-                filteredAccel.x,
-                filteredAccel.y,
-                filteredAccel.z
-            ) / 9.81;
+                filteredVelocity.x,
+                filteredVelocity.y,
+                filteredVelocity.z
+            );
         }
 
         function createViolinSound() {
@@ -152,45 +154,46 @@
         }
 
         function updateSound(timestamp) {
-            const totalG = calculateGValue();
-            const silenceThreshold = 0.1;
+            const totalVelocity = calculateVelocityMagnitude();
+            const silenceThreshold = 0.3;
             
-            if (totalG < silenceThreshold) {
+            if (totalVelocity < silenceThreshold) {
                 oscillators.forEach(obj => {
                     obj.gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
                 });
-                gValueDisplay.textContent = '0.00 g';
+                gValueDisplay.textContent = '0.00 m/s';
                 updateChart(0, (timestamp - startTime) / 1000);
                 return;
             }
 
             const now = audioContext.currentTime;
+            const intensityScale = 0.4;
             const intensities = [
-                Math.min(Math.pow(Math.abs(filteredAccel.x / 9.81), 1.5), 2), // Intensidad X
-                Math.min(Math.pow(Math.abs(filteredAccel.y / 9.81), 1.5), 2), // Intensidad Y
-                Math.min(Math.pow(Math.abs(filteredAccel.z / 9.81), 1.5), 2)  // Intensidad Z
+                Math.min(Math.pow(Math.abs(filteredVelocity.x * intensityScale), 1.3), 1.5),
+                Math.min(Math.pow(Math.abs(filteredVelocity.y * intensityScale), 1.3), 1.5),
+                Math.min(Math.pow(Math.abs(filteredVelocity.z * intensityScale), 1.3), 1.5)
             ];
 
             oscillators.forEach((obj, i) => {
                 obj.gainNode.gain.setTargetAtTime(intensities[i] * 0.3, now, 0.1);
                 
-                const vibratoFreq = 8;
-                const vibratoDepth = intensities[i] * 5;
+                const vibratoFreq = 6 + (intensities[i] * 4);
+                const vibratoDepth = intensities[i] * 8;
                 obj.osc.frequency.setValueAtTime(
                     frequencies[i] + Math.sin(now * vibratoFreq * Math.PI * 2) * vibratoDepth,
                     now
                 );
             });
 
-            if (timestamp - lastUpdate >= updateInterval) {
-                updateChart(totalG, (timestamp - startTime) / 1000);
-                lastUpdate = timestamp;
+            if (timestamp - lastChartUpdate >= updateInterval) {
+                updateChart(totalVelocity, (timestamp - startTime) / 1000);
+                lastChartUpdate = timestamp;
             }
         }
 
-        function updateChart(gValue, currentTime) {
+        function updateChart(velocityValue, currentTime) {
             const dataset = gChart.data.datasets[0].data;
-            dataset.push({ x: currentTime, y: gValue });
+            dataset.push({ x: currentTime, y: velocityValue });
             
             const cutoff = currentTime - 5;
             while (dataset.length > 0 && dataset[0].x < cutoff) {
@@ -203,6 +206,7 @@
             }
             
             gChart.update();
+            gValueDisplay.textContent = `${velocityValue.toFixed(2)} m/s`;
         }
 
         async function toggleSound() {
@@ -218,17 +222,24 @@
 
                     audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     startTime = Date.now();
-                    lastUpdate = startTime;
+                    lastChartUpdate = startTime;
                     createViolinSound();
                     
-                    filteredAccel = { x: 0, y: 0, z: 0 };
+                    filteredVelocity = { x: 0, y: 0, z: 0 };
+                    lastUpdateTime = 0;
                     
                     window.addEventListener('devicemotion', (e) => {
-                        filteredAccel.x = alpha * e.acceleration.x + (1 - alpha) * filteredAccel.x;
-                        filteredAccel.y = alpha * e.acceleration.y + (1 - alpha) * filteredAccel.y;
-                        filteredAccel.z = alpha * e.acceleration.z + (1 - alpha) * filteredAccel.z;
+                        const now = Date.now();
+                        const deltaTime = (now - lastUpdateTime) / 1000;
                         
-                        updateSound(Date.now());
+                        if (lastUpdateTime !== 0 && deltaTime > 0) {
+                            filteredVelocity.x = velocityDecay * (filteredVelocity.x + e.acceleration.x * deltaTime);
+                            filteredVelocity.y = velocityDecay * (filteredVelocity.y + e.acceleration.y * deltaTime);
+                            filteredVelocity.z = velocityDecay * (filteredVelocity.z + e.acceleration.z * deltaTime);
+                        }
+                        
+                        lastUpdateTime = now;
+                        updateSound(now);
                     });
 
                     gChart.data.datasets[0].data = [];
@@ -248,7 +259,7 @@
                 toggleButton.textContent = '▶';
                 toggleButton.style.backgroundColor = '#2196F3';
                 isPlaying = false;
-                gValueDisplay.textContent = '0.00 g';
+                gValueDisplay.textContent = '0.00 m/s';
             }
         }
 
