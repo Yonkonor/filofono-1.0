@@ -2,13 +2,17 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Violín por Velocidad con Semitonos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Violín Virtual</title>
     <style>
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
         
         body {
@@ -18,78 +22,19 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
             margin: 0;
-            padding: 20px;
+            padding: 0;
             min-height: 100vh;
             color: white;
-            overflow-x: hidden;
-        }
-        
-        header {
-            text-align: center;
-            margin: 15px 0 25px;
+            overflow: hidden;
+            position: fixed;
             width: 100%;
-        }
-        
-        h1 {
-            font-size: 2.2rem;
-            margin-bottom: 10px;
-            color: #FFD700;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
-        }
-        
-        .subtitle {
-            font-size: 1.1rem;
-            opacity: 0.9;
-            max-width: 500px;
-            margin: 0 auto;
-        }
-        
-        .instructions {
-            text-align: center;
-            max-width: 500px;
-            margin: 0 auto 25px;
-            font-size: 1rem;
-            line-height: 1.6;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 15px 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-        }
-        
-        .highlight {
-            color: #FFD700;
-            font-weight: bold;
-            display: inline-block;
-            margin-top: 8px;
-        }
-        
-        #gValue {
-            width: 200px;
-            height: 200px;
-            border-radius: 50%;
-            background: radial-gradient(circle, #4CAF50, #2E7D32);
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 28px;
-            font-weight: bold;
-            margin: 15px auto 30px;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
-            border: 4px solid white;
-            text-shadow: 0 2px 3px rgba(0,0,0,0.5);
-            transition: transform 0.3s;
-        }
-        
-        #gValue.active {
-            transform: scale(1.05);
-            box-shadow: 0 0 40px rgba(76, 175, 80, 0.7);
+            height: 100%;
         }
         
         .sliders-container {
             width: 100%;
             max-width: 500px;
-            margin: 0 auto 30px;
+            margin: auto;
             background: rgba(255, 255, 255, 0.15);
             border-radius: 20px;
             padding: 25px;
@@ -112,6 +57,7 @@
         .osc-label {
             font-size: 1.2rem;
             font-weight: bold;
+            color: #FFD700;
         }
         
         .note-display {
@@ -238,36 +184,7 @@
             background: radial-gradient(circle, #f44336, #B71C1C);
         }
         
-        .hint {
-            margin-top: 8px;
-            font-size: 0.9rem;
-            text-align: center;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 5px 10px;
-            border-radius: 10px;
-            max-width: 120px;
-        }
-        
         @media (max-width: 500px) {
-            h1 {
-                font-size: 1.8rem;
-            }
-            
-            .subtitle {
-                font-size: 1rem;
-            }
-            
-            .instructions {
-                font-size: 0.9rem;
-                padding: 12px 15px;
-            }
-            
-            #gValue {
-                width: 170px;
-                height: 170px;
-                font-size: 24px;
-            }
-            
             .sliders-container {
                 padding: 20px 15px;
             }
@@ -281,27 +198,28 @@
                 min-width: 100px;
             }
         }
+        
+        /* Bloqueo de orientación */
+        @media screen and (min-width: 320px) and (max-width: 767px) and (orientation: landscape) {
+            html {
+                transform: rotate(-90deg);
+                transform-origin: left top;
+                width: 100vh;
+                height: 100vw;
+                overflow-x: hidden;
+                position: absolute;
+                top: 100%;
+                left: 0;
+            }
+        }
     </style>
 </head>
 <body>
-    <header>
-        <h1>Violín por Velocidad</h1>
-        <p class="subtitle">Control de sonido por movimiento y semitonos</p>
-    </header>
-    
-    <div class="instructions">
-        Mueve tu teléfono en el aire como si fuera un arco de violín para generar sonido.<br>
-        Ajusta la afinación de cada cuerda con los controles deslizantes.<br>
-        <span class="highlight">Cada división = 1 semitono (±12 semitonos)</span>
-    </div>
-    
-    <div id="gValue">0.00 m/s</div>
-    
     <div class="sliders-container">
         <!-- Oscilador 1 -->
         <div class="slider-wrapper">
             <div class="slider-header">
-                <div class="osc-label">Cuerda 1 (Re)</div>
+                <div class="osc-label">Cuerda 1</div>
                 <div class="note-display" id="note1">Re (0)</div>
             </div>
             <div class="slider-container">
@@ -314,7 +232,7 @@
         <!-- Oscilador 2 -->
         <div class="slider-wrapper">
             <div class="slider-header">
-                <div class="osc-label">Cuerda 2 (La)</div>
+                <div class="osc-label">Cuerda 2</div>
                 <div class="note-display" id="note2">La (0)</div>
             </div>
             <div class="slider-container">
@@ -327,7 +245,7 @@
         <!-- Oscilador 3 -->
         <div class="slider-wrapper">
             <div class="slider-header">
-                <div class="osc-label">Cuerda 3 (Mi)</div>
+                <div class="osc-label">Cuerda 3</div>
                 <div class="note-display" id="note3">Mi (0)</div>
             </div>
             <div class="slider-container">
@@ -340,7 +258,6 @@
     
     <div class="controls">
         <button id="toggleButton">▶</button>
-        <div class="hint">Iniciar/Detener</div>
     </div>
 
     <script>
@@ -362,7 +279,6 @@
         
         // Elementos del DOM
         const toggleButton = document.getElementById('toggleButton');
-        const gValueDisplay = document.getElementById('gValue');
 
         // Calcular la magnitud de la velocidad
         function calculateVelocityMagnitude() {
@@ -422,15 +338,6 @@
         function updateSound(timestamp) {
             const totalVelocity = calculateVelocityMagnitude();
             const silenceThreshold = 0.3;
-            
-            // Actualizar display de velocidad
-            gValueDisplay.textContent = `${totalVelocity.toFixed(2)} m/s`;
-            
-            if (totalVelocity > silenceThreshold) {
-                gValueDisplay.classList.add('active');
-            } else {
-                gValueDisplay.classList.remove('active');
-            }
             
             // Silenciar si la velocidad es baja
             if (totalVelocity < silenceThreshold) {
@@ -524,7 +431,6 @@
                     if (typeof DeviceMotionEvent.requestPermission === 'function') {
                         const permission = await DeviceMotionEvent.requestPermission();
                         if (permission !== 'granted') {
-                            alert('Se requieren permisos para usar el sensor de movimiento.');
                             return;
                         }
                     }
@@ -547,8 +453,17 @@
                     toggleButton.textContent = '⏹';
                     toggleButton.classList.add('playing');
                     isPlaying = true;
+                    
+                    // Bloquear orientación si es posible
+                    if (screen.orientation && screen.orientation.lock) {
+                        try {
+                            await screen.orientation.lock('portrait');
+                        } catch (e) {
+                            console.log("Orientación no bloqueada:", e);
+                        }
+                    }
                 } catch (error) {
-                    alert('Error al iniciar: ' + error.message);
+                    console.log('Error al iniciar: ' + error.message);
                 }
             } else {
                 // Detener sonido
@@ -564,8 +479,6 @@
                 toggleButton.textContent = '▶';
                 toggleButton.classList.remove('playing');
                 isPlaying = false;
-                gValueDisplay.textContent = '0.00 m/s';
-                gValueDisplay.classList.remove('active');
             }
         }
         
@@ -589,6 +502,12 @@
         window.addEventListener('DOMContentLoaded', () => {
             toggleButton.addEventListener('click', toggleSound);
             setupSliders();
+            
+            // Prevenir gestos de zoom
+            document.addEventListener('gesturestart', e => e.preventDefault());
+            document.addEventListener('touchmove', e => {
+                if(e.scale !== 1) e.preventDefault();
+            }, { passive: false });
         });
     </script>
 </body>
