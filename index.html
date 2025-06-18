@@ -9,10 +9,6 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            touch-action: none;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
         }
         
         body {
@@ -22,13 +18,11 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
             margin: 0;
-            padding: 0;
+            padding: 10px;
             min-height: 100vh;
             color: white;
-            overflow: hidden;
-            position: fixed;
-            width: 100%;
-            height: 100%;
+            overflow-x: hidden;
+            touch-action: none;
         }
         
         .sliders-container {
@@ -57,7 +51,6 @@
         .osc-label {
             font-size: 1.2rem;
             font-weight: bold;
-            color: #FFD700;
         }
         
         .note-display {
@@ -184,6 +177,16 @@
             background: radial-gradient(circle, #f44336, #B71C1C);
         }
         
+        .hint {
+            margin-top: 8px;
+            font-size: 0.9rem;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 5px 10px;
+            border-radius: 10px;
+            max-width: 120px;
+        }
+        
         @media (max-width: 500px) {
             .sliders-container {
                 padding: 20px 15px;
@@ -200,16 +203,18 @@
         }
         
         /* Bloqueo de orientación */
-        @media screen and (min-width: 320px) and (max-width: 767px) and (orientation: landscape) {
-            html {
-                transform: rotate(-90deg);
-                transform-origin: left top;
-                width: 100vh;
-                height: 100vw;
-                overflow-x: hidden;
-                position: absolute;
-                top: 100%;
-                left: 0;
+        @media screen and (min-width: 320px) and (max-width: 767px) {
+            @media (orientation: landscape) {
+                html {
+                    transform: rotate(-90deg);
+                    transform-origin: left top;
+                    width: 100vh;
+                    height: 100vw;
+                    overflow-x: hidden;
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                }
             }
         }
     </style>
@@ -219,8 +224,8 @@
         <!-- Oscilador 1 -->
         <div class="slider-wrapper">
             <div class="slider-header">
-                <div class="osc-label">Cuerda 1</div>
-                <div class="note-display" id="note1">Re (0)</div>
+                <div class="osc-label">1</div>
+                <div class="note-display" id="note1">(0)</div>
             </div>
             <div class="slider-container">
                 <input type="range" min="0" max="24" value="12" class="slider" id="slider1">
@@ -232,8 +237,8 @@
         <!-- Oscilador 2 -->
         <div class="slider-wrapper">
             <div class="slider-header">
-                <div class="osc-label">Cuerda 2</div>
-                <div class="note-display" id="note2">La (0)</div>
+                <div class="osc-label">2</div>
+                <div class="note-display" id="note2">(0)</div>
             </div>
             <div class="slider-container">
                 <input type="range" min="0" max="24" value="12" class="slider" id="slider2">
@@ -245,8 +250,8 @@
         <!-- Oscilador 3 -->
         <div class="slider-wrapper">
             <div class="slider-header">
-                <div class="osc-label">Cuerda 3</div>
-                <div class="note-display" id="note3">Mi (0)</div>
+                <div class="osc-label">3</div>
+                <div class="note-display" id="note3">(0)</div>
             </div>
             <div class="slider-container">
                 <input type="range" min="0" max="24" value="12" class="slider" id="slider3">
@@ -382,7 +387,7 @@
             const noteName = getNoteName(index);
             
             freqDisplay.textContent = `${freq.toFixed(1)} Hz`;
-            noteDisplay.textContent = `${noteName} (${semitones[index] > 0 ? '+' : ''}${semitones[index]})`;
+            noteDisplay.textContent = `(${semitones[index] > 0 ? '+' : ''}${semitones[index]})`;
         }
 
         // Configurar los controles deslizantes
@@ -454,16 +459,10 @@
                     toggleButton.classList.add('playing');
                     isPlaying = true;
                     
-                    // Bloquear orientación si es posible
-                    if (screen.orientation && screen.orientation.lock) {
-                        try {
-                            await screen.orientation.lock('portrait');
-                        } catch (e) {
-                            console.log("Orientación no bloqueada:", e);
-                        }
-                    }
+                    // Intentar bloquear orientación
+                    lockScreenOrientation();
                 } catch (error) {
-                    console.log('Error al iniciar: ' + error.message);
+                    console.error('Error al iniciar: ', error);
                 }
             } else {
                 // Detener sonido
@@ -497,17 +496,29 @@
             lastUpdateTime = now;
             updateSound(now);
         }
+        
+        // Bloquear orientación de pantalla
+        function lockScreenOrientation() {
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('portrait').catch(function(error) {
+                    console.log('Error locking orientation: ', error);
+                });
+            }
+        }
 
         // Inicializar al cargar la página
         window.addEventListener('DOMContentLoaded', () => {
             toggleButton.addEventListener('click', toggleSound);
             setupSliders();
             
-            // Prevenir gestos de zoom
-            document.addEventListener('gesturestart', e => e.preventDefault());
-            document.addEventListener('touchmove', e => {
-                if(e.scale !== 1) e.preventDefault();
-            }, { passive: false });
+            // Prevenir rotación de pantalla
+            window.addEventListener('orientationchange', function() {
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('portrait').catch(function(error) {
+                        console.log('Error locking orientation: ', error);
+                    });
+                }
+            });
         });
     </script>
 </body>
