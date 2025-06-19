@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Violín Virtual</title>
+    <title>Contrabajo Virtual</title>
     <style>
         * {
             box-sizing: border-box;
@@ -117,7 +117,7 @@
             cursor: pointer;
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
             transition: all 0.2s;
-            opacity: 0.7; /* 30% de transparencia */
+            opacity: 0.7;
         }
         
         .slider::-webkit-slider-thumb:hover {
@@ -228,6 +228,17 @@
             color: #FFD700;
         }
         
+        .header {
+            text-align: center;
+            margin: 10px 0 20px;
+        }
+        
+        .header h1 {
+            font-size: 1.8rem;
+            color: #FFD700;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+        }
+        
         @media (max-width: 500px) {
             .sliders-container {
                 padding: 20px 15px;
@@ -247,6 +258,10 @@
                 height: 35px;
                 font-size: 16px;
             }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
         }
         
         /* Mensaje de orientación en modo paisaje */
@@ -258,53 +273,57 @@
     </style>
 </head>
 <body>
+    <div class="header">
+        <h1>Contrabajo Virtual</h1>
+    </div>
+    
     <div class="sliders-container">
-        <!-- Oscilador 1 -->
+        <!-- Oscilador 1 - Cuerda 3ª A1 -->
         <div class="slider-wrapper">
             <div class="slider-header">
                 <div class="osc-label">
-                    <button class="osc-toggle" data-index="0">1</button>
-                    Re
+                    <button class="osc-toggle active" data-index="0">A</button>
+                    3ª A1
                 </div>
-                <div class="note-display" id="note1">Re</div>
+                <div class="note-display" id="note1">A</div>
             </div>
             <div class="slider-container">
                 <input type="range" min="0" max="12" value="6" class="slider" id="slider1">
                 <div class="slider-ticks" id="ticks1"></div>
             </div>
-            <div class="freq-display" id="freq1">293.7 Hz</div>
+            <div class="freq-display" id="freq1">55.00 Hz</div>
         </div>
         
-        <!-- Oscilador 2 -->
+        <!-- Oscilador 2 - Cuerda 2ª D2 -->
         <div class="slider-wrapper">
             <div class="slider-header">
                 <div class="osc-label">
-                    <button class="osc-toggle" data-index="1">2</button>
-                    La
+                    <button class="osc-toggle active" data-index="1">D</button>
+                    2ª D2
                 </div>
-                <div class="note-display" id="note2">La</div>
+                <div class="note-display" id="note2">D</div>
             </div>
             <div class="slider-container">
                 <input type="range" min="0" max="12" value="6" class="slider" id="slider2">
                 <div class="slider-ticks" id="ticks2"></div>
             </div>
-            <div class="freq-display" id="freq2">440.0 Hz</div>
+            <div class="freq-display" id="freq2">73.42 Hz</div>
         </div>
         
-        <!-- Oscilador 3 -->
+        <!-- Oscilador 3 - Cuerda 1ª G2 -->
         <div class="slider-wrapper">
             <div class="slider-header">
                 <div class="osc-label">
-                    <button class="osc-toggle active" data-index="2">3</button>
-                    Mi
+                    <button class="osc-toggle active" data-index="2">G</button>
+                    1ª G2
                 </div>
-                <div class="note-display" id="note3">Mi</div>
+                <div class="note-display" id="note3">G</div>
             </div>
             <div class="slider-container">
                 <input type="range" min="0" max="12" value="6" class="slider" id="slider3">
                 <div class="slider-ticks" id="ticks3"></div>
             </div>
-            <div class="freq-display" id="freq3">659.0 Hz</div>
+            <div class="freq-display" id="freq3">98.00 Hz</div>
         </div>
     </div>
     
@@ -328,12 +347,12 @@
         const velocityDecay = 0.97;
         let startTime;
         
-        // Frecuencias base (Re, La, Mi)
-        const baseFrequencies = [293.7, 440, 659];
+        // Frecuencias base para contrabajo (3ª A1, 2ª D2, 1ª G2)
+        const baseFrequencies = [55.00, 73.42, 98.00];
         // Ajuste de semitonos para cada oscilador (-6 a +6)
         let semitones = [0, 0, 0];
         // Nombres de las notas
-        const noteNames = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
+        const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         // Estado de los osciladores (activados/desactivados)
         let oscActive = [true, true, true];
         
@@ -349,9 +368,9 @@
         function getNoteName(index) {
             // Índices base para cada cuerda
             const baseIndices = {
-                0: 2, // Re
-                1: 9, // La
-                2: 4  // Mi
+                0: 9,  // A (La)
+                1: 2,  // D (Re)
+                2: 7   // G (Sol)
             };
             
             let newIndex = baseIndices[index] + semitones[index];
@@ -363,7 +382,7 @@
             return noteNames[newIndex];
         }
 
-        // Crear sonido de violín
+        // Crear sonido de contrabajo
         function createViolinSound() {
             oscillators = baseFrequencies.map((baseFreq, index) => {
                 const osc = audioContext.createOscillator();
@@ -371,7 +390,7 @@
                 
                 // Usar frecuencia ajustada
                 const freq = getAdjustedFrequency(index);
-                osc.type = 'sawtooth';
+                osc.type = 'sine';
                 osc.frequency.value = freq;
                 gainNode.gain.value = 0;
                 
@@ -441,7 +460,7 @@
             const freq = getAdjustedFrequency(index);
             const noteName = getNoteName(index);
             
-            freqDisplay.textContent = `${freq.toFixed(1)} Hz`;
+            freqDisplay.textContent = `${freq.toFixed(2)} Hz`;
             noteDisplay.textContent = noteName;
         }
 
