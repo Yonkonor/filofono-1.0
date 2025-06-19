@@ -16,7 +16,7 @@
             flex-direction: column;
             align-items: center;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #2a1b3d, #44318d, #2a1b3d);
+            background: linear-gradient(135deg, #1a6c5c, #1f8fb2, #1a6c5c);
             margin: 0;
             padding: 10px;
             min-height: 100vh;
@@ -27,28 +27,38 @@
             user-select: none;
         }
         
-        .header {
+        .title {
+            margin: 15px 0;
+            font-size: 2.2rem;
             text-align: center;
-            margin: 20px 0;
-            width: 100%;
-        }
-        
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 5px;
-            color: #e2b714;
-            text-shadow: 0 0 10px rgba(226, 183, 20, 0.5);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            color: #FFD700;
         }
         
         .subtitle {
-            font-size: 1.2rem;
-            opacity: 0.8;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            text-align: center;
+            max-width: 500px;
+            line-height: 1.5;
+            padding: 0 15px;
+            color: #e0e0e0;
+        }
+        
+        .instrument-info {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 12px 20px;
+            margin: 10px auto 20px;
+            max-width: 500px;
+            text-align: center;
+            font-size: 0.95rem;
         }
         
         .sliders-container {
             width: 100%;
             max-width: 500px;
-            margin: 10px auto;
+            margin: 10px auto 20px;
             background: rgba(255, 255, 255, 0.15);
             border-radius: 20px;
             padding: 25px;
@@ -135,7 +145,7 @@
             cursor: pointer;
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
             transition: all 0.2s;
-            opacity: 0.7; /* 30% de transparencia */
+            opacity: 0.7;
         }
         
         .slider::-webkit-slider-thumb:hover {
@@ -247,8 +257,12 @@
         }
         
         @media (max-width: 500px) {
-            h1 {
-                font-size: 2rem;
+            .title {
+                font-size: 1.8rem;
+            }
+            
+            .subtitle {
+                font-size: 0.95rem;
             }
             
             .sliders-container {
@@ -265,4 +279,373 @@
             }
             
             .osc-toggle {
-                width
+                width: 35px;
+                height: 35px;
+                font-size: 16px;
+            }
+        }
+        
+        /* Mensaje de orientación en modo paisaje */
+        @media screen and (orientation: landscape) {
+            .orientation-warning {
+                display: flex;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1 class="title">Viola Virtual</h1>
+    <p class="subtitle">Mueve tu dispositivo para tocar las cuerdas de una viola</p>
+    
+    <div class="instrument-info">
+        Afinación: Sol (196.0 Hz) - Re (293.7 Hz) - La (440.0 Hz)
+    </div>
+    
+    <div class="sliders-container">
+        <!-- Oscilador 1: Sol -->
+        <div class="slider-wrapper">
+            <div class="slider-header">
+                <div class="osc-label">
+                    <button class="osc-toggle" data-index="0">1</button>
+                    Sol
+                </div>
+                <div class="note-display" id="note1">Sol</div>
+            </div>
+            <div class="slider-container">
+                <input type="range" min="0" max="12" value="6" class="slider" id="slider1">
+                <div class="slider-ticks" id="ticks1"></div>
+            </div>
+            <div class="freq-display" id="freq1">196.0 Hz</div>
+        </div>
+        
+        <!-- Oscilador 2: Re -->
+        <div class="slider-wrapper">
+            <div class="slider-header">
+                <div class="osc-label">
+                    <button class="osc-toggle" data-index="1">2</button>
+                    Re
+                </div>
+                <div class="note-display" id="note2">Re</div>
+            </div>
+            <div class="slider-container">
+                <input type="range" min="0" max="12" value="6" class="slider" id="slider2">
+                <div class="slider-ticks" id="ticks2"></div>
+            </div>
+            <div class="freq-display" id="freq2">293.7 Hz</div>
+        </div>
+        
+        <!-- Oscilador 3: La -->
+        <div class="slider-wrapper">
+            <div class="slider-header">
+                <div class="osc-label">
+                    <button class="osc-toggle active" data-index="2">3</button>
+                    La
+                </div>
+                <div class="note-display" id="note3">La</div>
+            </div>
+            <div class="slider-container">
+                <input type="range" min="0" max="12" value="6" class="slider" id="slider3">
+                <div class="slider-ticks" id="ticks3"></div>
+            </div>
+            <div class="freq-display" id="freq3">440.0 Hz</div>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button id="toggleButton">▶</button>
+    </div>
+    
+    <div class="orientation-warning">
+        <i>↻</i>
+        <h3>Por favor gira tu teléfono</h3>
+        <p>Esta aplicación solo funciona en modo vertical</p>
+    </div>
+
+    <script>
+        // Variables globales
+        let audioContext;
+        let oscillators = [];
+        let isPlaying = false;
+        let filteredVelocity = { x: 0, y: 0, z: 0 };
+        let lastUpdateTime = 0;
+        const velocityDecay = 0.97;
+        let startTime;
+        
+        // Frecuencias base para viola (Sol, Re, La)
+        const baseFrequencies = [196.0, 293.7, 440.0];
+        // Ajuste de semitonos para cada oscilador (-6 a +6)
+        let semitones = [0, 0, 0];
+        // Nombres de las notas
+        const noteNames = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
+        // Estado de los osciladores (activados/desactivados)
+        let oscActive = [true, true, true];
+        
+        // Elementos del DOM
+        const toggleButton = document.getElementById('toggleButton');
+
+        // Obtener frecuencia ajustada por semitonos
+        function getAdjustedFrequency(index) {
+            return baseFrequencies[index] * Math.pow(2, semitones[index] / 12);
+        }
+
+        // Obtener nombre de la nota actual
+        function getNoteName(index) {
+            // Índices base para cada cuerda de viola
+            const baseIndices = {
+                0: 7,  // Sol
+                1: 2,  // Re
+                2: 9   // La
+            };
+            
+            let newIndex = baseIndices[index] + semitones[index];
+            
+            // Manejar desbordamiento
+            while (newIndex < 0) newIndex += 12;
+            newIndex = newIndex % 12;
+            
+            return noteNames[newIndex];
+        }
+
+        // Crear sonido de viola
+        function createViolinSound() {
+            oscillators = baseFrequencies.map((baseFreq, index) => {
+                const osc = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                // Usar frecuencia ajustada
+                const freq = getAdjustedFrequency(index);
+                osc.type = 'sawtooth';
+                osc.frequency.value = freq;
+                gainNode.gain.value = 0;
+                
+                osc.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                return { osc, gainNode, baseIndex: index, active: oscActive[index] };
+            });
+
+            // Iniciar osciladores
+            oscillators.forEach(obj => obj.osc.start());
+        }
+
+        // Actualizar sonido basado en el movimiento
+        function updateSound(timestamp) {
+            const totalVelocity = Math.hypot(
+                filteredVelocity.x,
+                filteredVelocity.y,
+                filteredVelocity.z
+            );
+            
+            const silenceThreshold = 0.3;
+            
+            // Silenciar si la velocidad es baja
+            if (totalVelocity < silenceThreshold) {
+                oscillators.forEach(obj => {
+                    if (obj.active) {
+                        obj.gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+                    }
+                });
+                return;
+            }
+
+            const now = audioContext.currentTime;
+            const intensityScale = 0.4;
+            
+            // Calcular intensidades para cada eje
+            const intensities = [
+                Math.min(Math.pow(Math.abs(filteredVelocity.x * intensityScale), 1.3), 1.5),
+                Math.min(Math.pow(Math.abs(filteredVelocity.y * intensityScale), 1.3), 1.5),
+                Math.min(Math.pow(Math.abs(filteredVelocity.z * intensityScale), 1.3), 1.5)
+            ];
+
+            // Aplicar efectos a cada oscilador
+            oscillators.forEach((obj, i) => {
+                if (!obj.active) return;
+                
+                obj.gainNode.gain.setTargetAtTime(intensities[i] * 0.3, now, 0.1);
+                
+                // Añadir vibrato
+                const vibratoFreq = 6 + (intensities[i] * 4);
+                const vibratoDepth = intensities[i] * 8;
+                
+                // Actualizar frecuencia con ajuste de semitonos
+                const adjustedFreq = getAdjustedFrequency(obj.baseIndex);
+                obj.osc.frequency.setValueAtTime(
+                    adjustedFreq + Math.sin(now * vibratoFreq * Math.PI * 2) * vibratoDepth,
+                    now
+                );
+            });
+        }
+
+        // Actualizar la visualización de frecuencias
+        function updateFrequencyDisplay(index) {
+            const freqDisplay = document.getElementById(`freq${index+1}`);
+            const noteDisplay = document.getElementById(`note${index+1}`);
+            const freq = getAdjustedFrequency(index);
+            const noteName = getNoteName(index);
+            
+            freqDisplay.textContent = `${freq.toFixed(1)} Hz`;
+            noteDisplay.textContent = noteName;
+        }
+
+        // Configurar los controles deslizantes
+        function setupSliders() {
+            for (let i = 0; i < 3; i++) {
+                const slider = document.getElementById(`slider${i+1}`);
+                const ticksContainer = document.getElementById(`ticks${i+1}`);
+                
+                // Limpiar ticks anteriores
+                ticksContainer.innerHTML = '';
+                
+                // Crear marcas para el slider (ahora solo 13 ticks: 0-12)
+                for (let j = 0; j < 13; j++) {
+                    const tick = document.createElement('div');
+                    tick.className = 'tick';
+                    
+                    if (j === 6) {
+                        tick.classList.add('center');
+                    } else if (j % 2 === 0) {
+                        tick.classList.add('major');
+                    }
+                    
+                    ticksContainer.appendChild(tick);
+                }
+                
+                // Evento de cambio para el slider
+                slider.addEventListener('input', function() {
+                    // Convertir valor (0-12) a semitonos (-6 a 6)
+                    semitones[i] = parseInt(this.value) - 6;
+                    updateFrequencyDisplay(i);
+                    
+                    // Actualizar frecuencia en tiempo real si está sonando
+                    if (isPlaying && oscillators[i]) {
+                        const freq = getAdjustedFrequency(i);
+                        oscillators[i].osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+                    }
+                });
+                
+                // Inicializar display
+                updateFrequencyDisplay(i);
+            }
+            
+            // Configurar botones de toggle para cada oscilador
+            document.querySelectorAll('.osc-toggle').forEach(button => {
+                const index = parseInt(button.dataset.index);
+                
+                button.addEventListener('click', function() {
+                    oscActive[index] = !oscActive[index];
+                    
+                    if (oscActive[index]) {
+                        this.classList.add('active');
+                    } else {
+                        this.classList.remove('active');
+                    }
+                    
+                    // Si estamos reproduciendo, actualizamos el estado del oscilador
+                    if (isPlaying && oscillators[index]) {
+                        if (!oscActive[index]) {
+                            oscillators[index].gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+                        }
+                    }
+                });
+            });
+        }
+
+        // Alternar inicio/detención
+        async function toggleSound() {
+            if (!isPlaying) {
+                try {
+                    // Solicitar permiso para sensores en iOS
+                    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                        const permission = await DeviceMotionEvent.requestPermission();
+                        if (permission !== 'granted') {
+                            return;
+                        }
+                    }
+
+                    // Iniciar contexto de audio
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    startTime = Date.now();
+                    
+                    // Crear sonido
+                    createViolinSound();
+                    
+                    // Inicializar valores
+                    filteredVelocity = { x: 0, y: 0, z: 0 };
+                    lastUpdateTime = 0;
+                    
+                    // Escuchar eventos de movimiento
+                    window.addEventListener('devicemotion', handleMotion);
+                    
+                    // Actualizar UI
+                    toggleButton.textContent = '⏹';
+                    toggleButton.classList.add('playing');
+                    isPlaying = true;
+                    
+                    // Intentar bloquear orientación
+                    lockScreenOrientation();
+                } catch (error) {
+                    console.error('Error al iniciar: ', error);
+                }
+            } else {
+                // Detener sonido
+                oscillators.forEach(obj => obj.osc.stop());
+                if (audioContext) {
+                    audioContext.close();
+                }
+                
+                // Eliminar listener de movimiento
+                window.removeEventListener('devicemotion', handleMotion);
+                
+                // Actualizar UI
+                toggleButton.textContent = '▶';
+                toggleButton.classList.remove('playing');
+                isPlaying = false;
+            }
+        }
+        
+        // Manejar eventos de movimiento
+        function handleMotion(e) {
+            const now = Date.now();
+            const deltaTime = (now - lastUpdateTime) / 1000;
+            
+            if (lastUpdateTime !== 0 && deltaTime > 0) {
+                // Filtrar y suavizar la velocidad
+                filteredVelocity.x = velocityDecay * (filteredVelocity.x + e.acceleration.x * deltaTime);
+                filteredVelocity.y = velocityDecay * (filteredVelocity.y + e.acceleration.y * deltaTime);
+                filteredVelocity.z = velocityDecay * (filteredVelocity.z + e.acceleration.z * deltaTime);
+            }
+            
+            lastUpdateTime = now;
+            updateSound(now);
+        }
+        
+        // Bloquear orientación de pantalla
+        function lockScreenOrientation() {
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('portrait').catch(function(error) {
+                    console.log('Error locking orientation: ', error);
+                });
+            }
+        }
+
+        // Inicializar al cargar la página
+        window.addEventListener('DOMContentLoaded', () => {
+            toggleButton.addEventListener('click', toggleSound);
+            setupSliders();
+            
+            // Prevenir rotación de pantalla
+            window.addEventListener('orientationchange', function() {
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('portrait').catch(function(error) {
+                        console.log('Error locking orientation: ', error);
+                    });
+                }
+            });
+            
+            // Forzar orientación vertical inicialmente
+            lockScreenOrientation();
+        });
+    </script>
+</body>
+</html>
