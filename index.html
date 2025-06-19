@@ -23,12 +23,14 @@
             color: white;
             overflow-x: hidden;
             touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
         
         .sliders-container {
             width: 100%;
             max-width: 500px;
-            margin: auto;
+            margin: 20px auto;
             background: rgba(255, 255, 255, 0.15);
             border-radius: 20px;
             padding: 25px;
@@ -51,6 +53,29 @@
         .osc-label {
             font-size: 1.2rem;
             font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .osc-toggle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #2196F3, #0D47A1);
+            color: white;
+            border: 2px solid white;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            opacity: 0.7;
+        }
+        
+        .osc-toggle.active {
+            background: radial-gradient(circle, #4CAF50, #2E7D32);
         }
         
         .note-display {
@@ -92,6 +117,7 @@
             cursor: pointer;
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
             transition: all 0.2s;
+            opacity: 0.7; /* 30% de transparencia */
         }
         
         .slider::-webkit-slider-thumb:hover {
@@ -162,6 +188,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            opacity: 0.7;
         }
         
         #toggleButton:hover {
@@ -177,14 +204,28 @@
             background: radial-gradient(circle, #f44336, #B71C1C);
         }
         
-        .hint {
-            margin-top: 8px;
-            font-size: 0.9rem;
+        .orientation-warning {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
             text-align: center;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 5px 10px;
-            border-radius: 10px;
-            max-width: 120px;
+            padding: 20px;
+            color: white;
+            font-size: 1.5rem;
+        }
+        
+        .orientation-warning i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #FFD700;
         }
         
         @media (max-width: 500px) {
@@ -200,21 +241,18 @@
                 font-size: 1.1rem;
                 min-width: 100px;
             }
+            
+            .osc-toggle {
+                width: 35px;
+                height: 35px;
+                font-size: 16px;
+            }
         }
         
-        /* Bloqueo de orientación */
-        @media screen and (min-width: 320px) and (max-width: 767px) {
-            @media (orientation: landscape) {
-                html {
-                    transform: rotate(-90deg);
-                    transform-origin: left top;
-                    width: 100vh;
-                    height: 100vw;
-                    overflow-x: hidden;
-                    position: absolute;
-                    top: 100%;
-                    left: 0;
-                }
+        /* Mensaje de orientación en modo paisaje */
+        @media screen and (orientation: landscape) {
+            .orientation-warning {
+                display: flex;
             }
         }
     </style>
@@ -224,11 +262,14 @@
         <!-- Oscilador 1 -->
         <div class="slider-wrapper">
             <div class="slider-header">
-                <div class="osc-label">1</div>
-                <div class="note-display" id="note1">(0)</div>
+                <div class="osc-label">
+                    <button class="osc-toggle" data-index="0">1</button>
+                    Re
+                </div>
+                <div class="note-display" id="note1">Re</div>
             </div>
             <div class="slider-container">
-                <input type="range" min="0" max="24" value="12" class="slider" id="slider1">
+                <input type="range" min="0" max="12" value="6" class="slider" id="slider1">
                 <div class="slider-ticks" id="ticks1"></div>
             </div>
             <div class="freq-display" id="freq1">293.7 Hz</div>
@@ -237,11 +278,14 @@
         <!-- Oscilador 2 -->
         <div class="slider-wrapper">
             <div class="slider-header">
-                <div class="osc-label">2</div>
-                <div class="note-display" id="note2">(0)</div>
+                <div class="osc-label">
+                    <button class="osc-toggle" data-index="1">2</button>
+                    La
+                </div>
+                <div class="note-display" id="note2">La</div>
             </div>
             <div class="slider-container">
-                <input type="range" min="0" max="24" value="12" class="slider" id="slider2">
+                <input type="range" min="0" max="12" value="6" class="slider" id="slider2">
                 <div class="slider-ticks" id="ticks2"></div>
             </div>
             <div class="freq-display" id="freq2">440.0 Hz</div>
@@ -250,11 +294,14 @@
         <!-- Oscilador 3 -->
         <div class="slider-wrapper">
             <div class="slider-header">
-                <div class="osc-label">3</div>
-                <div class="note-display" id="note3">(0)</div>
+                <div class="osc-label">
+                    <button class="osc-toggle active" data-index="2">3</button>
+                    Mi
+                </div>
+                <div class="note-display" id="note3">Mi</div>
             </div>
             <div class="slider-container">
-                <input type="range" min="0" max="24" value="12" class="slider" id="slider3">
+                <input type="range" min="0" max="12" value="6" class="slider" id="slider3">
                 <div class="slider-ticks" id="ticks3"></div>
             </div>
             <div class="freq-display" id="freq3">659.0 Hz</div>
@@ -263,6 +310,12 @@
     
     <div class="controls">
         <button id="toggleButton">▶</button>
+    </div>
+    
+    <div class="orientation-warning">
+        <i>↻</i>
+        <h3>Por favor gira tu teléfono</h3>
+        <p>Esta aplicación solo funciona en modo vertical</p>
     </div>
 
     <script>
@@ -277,22 +330,15 @@
         
         // Frecuencias base (Re, La, Mi)
         const baseFrequencies = [293.7, 440, 659];
-        // Ajuste de semitonos para cada oscilador (-12 a +12)
+        // Ajuste de semitonos para cada oscilador (-6 a +6)
         let semitones = [0, 0, 0];
         // Nombres de las notas
         const noteNames = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
+        // Estado de los osciladores (activados/desactivados)
+        let oscActive = [true, true, true];
         
         // Elementos del DOM
         const toggleButton = document.getElementById('toggleButton');
-
-        // Calcular la magnitud de la velocidad
-        function calculateVelocityMagnitude() {
-            return Math.hypot(
-                filteredVelocity.x,
-                filteredVelocity.y,
-                filteredVelocity.z
-            );
-        }
 
         // Obtener frecuencia ajustada por semitonos
         function getAdjustedFrequency(index) {
@@ -332,7 +378,7 @@
                 osc.connect(gainNode);
                 gainNode.connect(audioContext.destination);
                 
-                return { osc, gainNode, baseIndex: index };
+                return { osc, gainNode, baseIndex: index, active: oscActive[index] };
             });
 
             // Iniciar osciladores
@@ -341,13 +387,20 @@
 
         // Actualizar sonido basado en el movimiento
         function updateSound(timestamp) {
-            const totalVelocity = calculateVelocityMagnitude();
+            const totalVelocity = Math.hypot(
+                filteredVelocity.x,
+                filteredVelocity.y,
+                filteredVelocity.z
+            );
+            
             const silenceThreshold = 0.3;
             
             // Silenciar si la velocidad es baja
             if (totalVelocity < silenceThreshold) {
                 oscillators.forEach(obj => {
-                    obj.gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+                    if (obj.active) {
+                        obj.gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+                    }
                 });
                 return;
             }
@@ -364,6 +417,8 @@
 
             // Aplicar efectos a cada oscilador
             oscillators.forEach((obj, i) => {
+                if (!obj.active) return;
+                
                 obj.gainNode.gain.setTargetAtTime(intensities[i] * 0.3, now, 0.1);
                 
                 // Añadir vibrato
@@ -387,7 +442,7 @@
             const noteName = getNoteName(index);
             
             freqDisplay.textContent = `${freq.toFixed(1)} Hz`;
-            noteDisplay.textContent = `(${semitones[index] > 0 ? '+' : ''}${semitones[index]})`;
+            noteDisplay.textContent = noteName;
         }
 
         // Configurar los controles deslizantes
@@ -396,12 +451,15 @@
                 const slider = document.getElementById(`slider${i+1}`);
                 const ticksContainer = document.getElementById(`ticks${i+1}`);
                 
-                // Crear marcas para el slider
-                for (let j = 0; j < 25; j++) {
+                // Limpiar ticks anteriores
+                ticksContainer.innerHTML = '';
+                
+                // Crear marcas para el slider (ahora solo 13 ticks: 0-12)
+                for (let j = 0; j < 13; j++) {
                     const tick = document.createElement('div');
                     tick.className = 'tick';
                     
-                    if (j === 12) {
+                    if (j === 6) {
                         tick.classList.add('center');
                     } else if (j % 2 === 0) {
                         tick.classList.add('major');
@@ -412,8 +470,8 @@
                 
                 // Evento de cambio para el slider
                 slider.addEventListener('input', function() {
-                    // Convertir valor (0-24) a semitonos (-12 a 12)
-                    semitones[i] = parseInt(this.value) - 12;
+                    // Convertir valor (0-12) a semitonos (-6 a 6)
+                    semitones[i] = parseInt(this.value) - 6;
                     updateFrequencyDisplay(i);
                     
                     // Actualizar frecuencia en tiempo real si está sonando
@@ -426,6 +484,28 @@
                 // Inicializar display
                 updateFrequencyDisplay(i);
             }
+            
+            // Configurar botones de toggle para cada oscilador
+            document.querySelectorAll('.osc-toggle').forEach(button => {
+                const index = parseInt(button.dataset.index);
+                
+                button.addEventListener('click', function() {
+                    oscActive[index] = !oscActive[index];
+                    
+                    if (oscActive[index]) {
+                        this.classList.add('active');
+                    } else {
+                        this.classList.remove('active');
+                    }
+                    
+                    // Si estamos reproduciendo, actualizamos el estado del oscilador
+                    if (isPlaying && oscillators[index]) {
+                        if (!oscActive[index]) {
+                            oscillators[index].gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+                        }
+                    }
+                });
+            });
         }
 
         // Alternar inicio/detención
@@ -519,6 +599,9 @@
                     });
                 }
             });
+            
+            // Forzar orientación vertical inicialmente
+            lockScreenOrientation();
         });
     </script>
 </body>
