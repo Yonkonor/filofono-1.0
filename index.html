@@ -27,38 +27,10 @@
             user-select: none;
         }
         
-        .title {
-            margin: 15px 0;
-            font-size: 2.2rem;
-            text-align: center;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            color: #FFD700;
-        }
-        
-        .subtitle {
-            margin-bottom: 20px;
-            font-size: 1.1rem;
-            text-align: center;
-            max-width: 500px;
-            line-height: 1.5;
-            padding: 0 15px;
-            color: #e0e0e0;
-        }
-        
-        .instrument-info {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 12px;
-            padding: 12px 20px;
-            margin: 10px auto 20px;
-            max-width: 500px;
-            text-align: center;
-            font-size: 0.95rem;
-        }
-        
         .sliders-container {
             width: 100%;
             max-width: 500px;
-            margin: 10px auto 20px;
+            margin: auto;
             background: rgba(255, 255, 255, 0.15);
             border-radius: 20px;
             padding: 25px;
@@ -257,14 +229,6 @@
         }
         
         @media (max-width: 500px) {
-            .title {
-                font-size: 1.8rem;
-            }
-            
-            .subtitle {
-                font-size: 0.95rem;
-            }
-            
             .sliders-container {
                 padding: 20px 15px;
             }
@@ -290,17 +254,15 @@
             .orientation-warning {
                 display: flex;
             }
+            
+            /* Forzar orientación vertical */
+            body {
+                transform: rotate(0deg);
+            }
         }
     </style>
 </head>
 <body>
-    <h1 class="title">Viola Virtual</h1>
-    <p class="subtitle">Mueve tu dispositivo para tocar las cuerdas de una viola</p>
-    
-    <div class="instrument-info">
-        Afinación: Sol (196.0 Hz) - Re (293.7 Hz) - La (440.0 Hz)
-    </div>
-    
     <div class="sliders-container">
         <!-- Oscilador 1: Sol -->
         <div class="slider-wrapper">
@@ -626,6 +588,19 @@
                 screen.orientation.lock('portrait').catch(function(error) {
                     console.log('Error locking orientation: ', error);
                 });
+            } else {
+                // Solución alternativa para navegadores que no soportan screen.orientation.lock
+                window.addEventListener('orientationchange', preventRotation);
+            }
+        }
+        
+        // Prevenir rotación de pantalla
+        function preventRotation() {
+            if (Math.abs(window.orientation) === 90) {
+                // Si está en modo paisaje, forzar modo retrato
+                document.body.style.transform = 'rotate(0deg)';
+                document.body.style.width = '100%';
+                document.body.style.height = '100%';
             }
         }
 
@@ -636,15 +611,13 @@
             
             // Prevenir rotación de pantalla
             window.addEventListener('orientationchange', function() {
-                if (screen.orientation && screen.orientation.lock) {
-                    screen.orientation.lock('portrait').catch(function(error) {
-                        console.log('Error locking orientation: ', error);
-                    });
-                }
+                lockScreenOrientation();
+                preventRotation();
             });
             
             // Forzar orientación vertical inicialmente
             lockScreenOrientation();
+            preventRotation();
         });
     </script>
 </body>
