@@ -23,6 +23,7 @@
             overflow: hidden;
             color: white;
             padding: 10px;
+            touch-action: none;
         }
         
         .game-container {
@@ -277,10 +278,14 @@
             const container = document.querySelector('.game-container');
             canvas.width = container.clientWidth;
             canvas.height = container.clientHeight;
+            
+            // Redibujar si estamos en la pantalla de inicio
+            if (!gameRunning && !gameStarted) {
+                drawStartScreen();
+            }
         }
         
         window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
         
         // Elementos de UI
         const startScreen = document.getElementById('startScreen');
@@ -303,11 +308,11 @@
         
         // Variables del juego
         let gameRunning = false;
+        let gameStarted = false;
         let score = 0;
         let lives = 3;
         let level = 1;
         let gameSpeed = 1;
-        let keys = {};
         
         // Clase para Pac-Man
         class Pacman {
@@ -553,14 +558,14 @@
         }
         
         // Crear objetos del juego
-        let pacman = new Pacman();
+        let pacman;
         let platforms = [];
         let mandarins = [];
         let chanchos = [];
         
         // Inicializar nivel
         function initLevel() {
-            // Reiniciar posición de Pac-Man
+            // Crear Pac-Man
             pacman = new Pacman();
             
             // Crear plataformas
@@ -590,10 +595,4 @@
             chanchos = [];
             chanchos.push(new Chancho(300, canvas.height - 180, -1));
             chanchos.push(new Chancho(100, canvas.height - 330, 1));
-            chanchos.push(new Chancho(450, canvas.height - 530, -1));
-        }
-        
-        // Dibujar todo
-        function draw() {
-            // Fondo
-            ctx.fi
+            chanchos
