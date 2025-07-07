@@ -3,594 +3,622 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pac-Man's Mandarina Adventure</title>
+    <title>Viola Virtual</title>
     <style>
         * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-            touch-action: manipulation;
         }
         
         body {
-            background: linear-gradient(to bottom, #1a237e, #4a148c);
-            font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-start;
-            min-height: 100vh;
-            overflow: hidden;
-            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a6c5c, #1f8fb2, #1a6c5c);
+            margin: 0;
             padding: 10px;
+            min-height: 100vh;
+            color: white;
+            overflow-x: hidden;
             touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
         
-        .title {
-            font-size: 1.8rem;
-            margin: 10px 0;
-            color: #ffeb3b;
-            text-align: center;
-            text-shadow: 2px 2px 0 #ff9800;
-            padding: 0 10px;
-        }
-        
-        .game-container {
-            position: relative;
+        .sliders-container {
             width: 100%;
-            height: 60vh;
-            max-height: 500px;
-            margin: 10px auto;
-            border: 4px solid #ffeb3b;
-            border-radius: 12px;
-            box-shadow: 0 0 20px rgba(255, 235, 59, 0.5);
-            overflow: hidden;
-            flex-shrink: 0;
+            max-width: 500px;
+            margin: auto;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
         }
         
-        canvas {
-            background: linear-gradient(to bottom, #64b5f6, #bbdefb);
-            display: block;
-            width: 100%;
-            height: 100%;
+        .slider-wrapper {
+            margin: 25px 0;
         }
         
-        .ui-container {
-            width: 100%;
-            max-width: 480px;
+        .slider-header {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
-            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 15px;
         }
         
-        .score-board {
-            background: rgba(0, 0, 0, 0.6);
-            border: 2px solid #ff9800;
-            border-radius: 10px;
-            padding: 8px 12px;
+        .osc-label {
+            font-size: 1.2rem;
+            font-weight: bold;
             display: flex;
             align-items: center;
-            font-size: 0.9rem;
-            min-width: 120px;
-            margin: 5px;
+            gap: 10px;
         }
         
-        .score-board div {
-            margin: 0 5px;
+        .osc-toggle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #2196F3, #0D47A1);
+            color: white;
+            border: 2px solid white;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            opacity: 0.7;
+        }
+        
+        .osc-toggle.active {
+            background: radial-gradient(circle, #4CAF50, #2E7D32);
+        }
+        
+        .note-display {
+            font-size: 1.3rem;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 6px 15px;
+            border-radius: 10px;
+            min-width: 120px;
+            text-align: center;
+            color: #FFD700;
+            font-weight: bold;
+        }
+        
+        .slider-container {
+            position: relative;
+            height: 50px;
+            margin: 10px 0 15px;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 20px;
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            outline: none;
+            position: absolute;
+            top: 15px;
+            z-index: 2;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #FF9800, #F57C00);
+            border: 3px solid white;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+            transition: all 0.2s;
+            opacity: 0.7;
+        }
+        
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            background: radial-gradient(circle, #FFB74D, #FF9800);
+        }
+        
+        .slider-ticks {
+            display: flex;
+            justify-content: space-between;
+            position: absolute;
+            width: 100%;
+            top: 0;
+            height: 50px;
+            pointer-events: none;
+        }
+        
+        .tick {
+            width: 2px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.5);
+            position: relative;
+            top: 5px;
+        }
+        
+        .tick.major {
+            height: 20px;
+            background: white;
+        }
+        
+        .tick.center {
+            height: 30px;
+            background: #FFD700;
+            width: 3px;
+        }
+        
+        .freq-display {
+            text-align: center;
+            font-size: 1.1rem;
+            margin-top: 10px;
+            font-weight: 500;
+            background: rgba(0, 0, 0, 0.25);
+            padding: 8px;
+            border-radius: 10px;
         }
         
         .controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
             display: flex;
-            justify-content: center;
-            margin-top: 10px;
-            gap: 15px;
-            width: 100%;
-            max-width: 480px;
-        }
-        
-        .btn {
-            background: linear-gradient(to bottom, #ff9800, #f57c00);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            font-size: 1.2rem;
-            cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            display: flex;
+            flex-direction: column;
             align-items: center;
+            z-index: 100;
+        }
+        
+        #toggleButton {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            font-size: 24px;
+            background: radial-gradient(circle, #2196F3, #0D47A1);
+            color: white;
+            border: 3px solid white;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+            display: flex;
             justify-content: center;
-            user-select: none;
-            touch-action: none;
+            align-items: center;
+            opacity: 0.7;
         }
         
-        .btn:active {
-            transform: translateY(4px);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        #toggleButton:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
         }
         
-        .btn-left::after {
-            content: "←";
-            font-size: 1.8rem;
+        #toggleButton:active {
+            transform: scale(0.95);
         }
         
-        .btn-right::after {
-            content: "→";
-            font-size: 1.8rem;
+        #toggleButton.playing {
+            background: radial-gradient(circle, #f44336, #B71C1C);
         }
         
-        .btn-jump::after {
-            content: "↑";
-            font-size: 1.8rem;
-        }
-        
-        .screen {
-            position: absolute;
+        .orientation-warning {
+            display: none;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            display: flex;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
             flex-direction: column;
-            align-items: center;
             justify-content: center;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 10;
+            align-items: center;
             text-align: center;
-            padding: 15px;
-        }
-        
-        .screen h1 {
-            color: #ffeb3b;
-            font-size: 1.8rem;
-            margin-bottom: 15px;
-            text-shadow: 0 0 10px rgba(255, 235, 59, 0.7);
-        }
-        
-        .instructions {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 12px;
-            margin: 15px 0;
-            font-size: 0.9rem;
-            max-width: 90%;
-        }
-        
-        .instructions p {
-            margin: 8px 0;
-        }
-        
-        .highlight {
-            color: #ffeb3b;
-            font-weight: bold;
-        }
-        
-        .btn-start {
-            background: linear-gradient(to bottom, #4caf50, #2e7d32);
+            padding: 20px;
             color: white;
-            border: none;
-            border-radius: 50px;
-            padding: 12px 30px;
-            font-size: 1.2rem;
-            cursor: pointer;
-            margin-top: 15px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            font-weight: bold;
-            letter-spacing: 1px;
+            font-size: 1.5rem;
         }
         
-        .btn-start:active {
-            transform: translateY(4px);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        .orientation-warning i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #FFD700;
         }
         
-        .hidden {
-            display: none;
-        }
-        
-        .game-over {
-            color: #ff5252;
-            font-size: 2rem;
-            margin-bottom: 15px;
-        }
-        
-        .level-up {
-            color: #4caf50;
-            font-size: 1.8rem;
-            margin-bottom: 15px;
-        }
-        
-        @media (max-height: 700px) {
-            .game-container {
-                height: 55vh;
+        @media (max-width: 500px) {
+            .sliders-container {
+                padding: 20px 15px;
             }
             
-            .title {
-                font-size: 1.5rem;
-                margin: 5px 0;
+            .osc-label {
+                font-size: 1.1rem;
             }
             
-            .score-board {
-                font-size: 0.8rem;
-                padding: 6px 10px;
+            .note-display {
+                font-size: 1.1rem;
                 min-width: 100px;
             }
             
-            .btn {
-                width: 55px;
-                height: 55px;
-                font-size: 1rem;
+            .osc-toggle {
+                width: 35px;
+                height: 35px;
+                font-size: 16px;
             }
         }
         
-        @media (max-height: 600px) {
-            .game-container {
-                height: 50vh;
+        /* Mensaje de orientación en modo paisaje */
+        @media screen and (orientation: landscape) {
+            .orientation-warning {
+                display: flex;
+            }
+            
+            /* Forzar orientación vertical */
+            body {
+                transform: rotate(0deg);
             }
         }
     </style>
 </head>
 <body>
-    <h1 class="title">Pac-Man's Mandarina Adventure</h1>
-    
-    <div class="ui-container">
-        <div class="score-board">
-            <div>Mandarin: <span id="score">0</span></div>
-            <div>Vidas: <span id="lives">3</span></div>
-        </div>
-        <div class="score-board">
-            Nivel: <span id="level">1</span>
-        </div>
-    </div>
-    
-    <div class="game-container">
-        <canvas id="gameCanvas"></canvas>
-        
-        <div id="startScreen" class="screen">
-            <h1>Pac-Man's Mandarina Adventure</h1>
-            <div class="instructions">
-                <p>¡Ayuda a Pac-Man a recolectar todas las mandarinas!</p>
-                <p>Evita a los <span class="highlight">chanchos</span> que protegen las mandarinas.</p>
-                <p>Usa los botones para moverte y saltar.</p>
-                <p>¡Cada 10 mandarinas subes de nivel y el juego se vuelve más difícil!</p>
+    <div class="sliders-container">
+        <!-- Oscilador 1: Sol -->
+        <div class="slider-wrapper">
+            <div class="slider-header">
+                <div class="osc-label">
+                    <button class="osc-toggle" data-index="0">1</button>
+                    Sol
+                </div>
+                <div class="note-display" id="note1">Sol</div>
             </div>
-            <button id="startButton" class="btn-start">COMENZAR JUEGO</button>
+            <div class="slider-container">
+                <input type="range" min="0" max="12" value="6" class="slider" id="slider1">
+                <div class="slider-ticks" id="ticks1"></div>
+            </div>
+            <div class="freq-display" id="freq1">196.0 Hz</div>
         </div>
         
-        <div id="gameOverScreen" class="screen hidden">
-            <h1 class="game-over">¡GAME OVER!</h1>
-            <div class="instructions">
-                <p>Mandarin recolectadas: <span id="finalScore">0</span></p>
-                <p>Nivel alcanzado: <span id="finalLevel">1</span></p>
+        <!-- Oscilador 2: Re -->
+        <div class="slider-wrapper">
+            <div class="slider-header">
+                <div class="osc-label">
+                    <button class="osc-toggle" data-index="1">2</button>
+                    Re
+                </div>
+                <div class="note-display" id="note2">Re</div>
             </div>
-            <button id="restartButton" class="btn-start">JUGAR DE NUEVO</button>
+            <div class="slider-container">
+                <input type="range" min="0" max="12" value="6" class="slider" id="slider2">
+                <div class="slider-ticks" id="ticks2"></div>
+            </div>
+            <div class="freq-display" id="freq2">293.7 Hz</div>
         </div>
         
-        <div id="levelUpScreen" class="screen hidden">
-            <h1 class="level-up">¡NIVEL COMPLETADO!</h1>
-            <div class="instructions">
-                <p>¡Felicidades! Pasaste al nivel <span id="nextLevel">2</span></p>
-                <p>Los chanchos ahora son más rápidos y agresivos.</p>
-                <p>¡Sigue recolectando mandarinas!</p>
+        <!-- Oscilador 3: La -->
+        <div class="slider-wrapper">
+            <div class="slider-header">
+                <div class="osc-label">
+                    <button class="osc-toggle active" data-index="2">3</button>
+                    La
+                </div>
+                <div class="note-display" id="note3">La</div>
             </div>
-            <button id="nextLevelButton" class="btn-start">CONTINUAR</button>
+            <div class="slider-container">
+                <input type="range" min="0" max="12" value="6" class="slider" id="slider3">
+                <div class="slider-ticks" id="ticks3"></div>
+            </div>
+            <div class="freq-display" id="freq3">440.0 Hz</div>
         </div>
     </div>
     
     <div class="controls">
-        <div class="btn btn-left" id="leftButton"></div>
-        <div class="btn btn-jump" id="jumpButton"></div>
-        <div class="btn btn-right" id="rightButton"></div>
+        <button id="toggleButton">▶</button>
     </div>
     
+    <div class="orientation-warning">
+        <i>↻</i>
+        <h3>Por favor gira tu teléfono</h3>
+        <p>Esta aplicación solo funciona en modo vertical</p>
+    </div>
+
     <script>
-        // Variables del juego
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        // Variables globales
+        let audioContext;
+        let oscillators = [];
+        let isPlaying = false;
+        let filteredVelocity = { x: 0, y: 0, z: 0 };
+        let lastUpdateTime = 0;
+        const velocityDecay = 0.97;
+        let startTime;
         
-        // Ajustar tamaño del canvas
-        function resizeCanvas() {
-            const container = document.querySelector('.game-container');
-            canvas.width = container.clientWidth;
-            canvas.height = container.clientHeight;
-            
-            // Redibujar si estamos en la pantalla de inicio
-            if (!gameRunning && !gameStarted) {
-                drawStartScreen();
-            }
+        // Frecuencias base para viola (Sol, Re, La)
+        const baseFrequencies = [196.0, 293.7, 440.0];
+        // Ajuste de semitonos para cada oscilador (-6 a +6)
+        let semitones = [0, 0, 0];
+        // Nombres de las notas
+        const noteNames = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
+        // Estado de los osciladores (activados/desactivados)
+        let oscActive = [true, true, true];
+        
+        // Elementos del DOM
+        const toggleButton = document.getElementById('toggleButton');
+
+        // Obtener frecuencia ajustada por semitonos
+        function getAdjustedFrequency(index) {
+            return baseFrequencies[index] * Math.pow(2, semitones[index] / 12);
         }
-        
-        window.addEventListener('resize', resizeCanvas);
-        
-        // Elementos de UI
-        const startScreen = document.getElementById('startScreen');
-        const gameOverScreen = document.getElementById('gameOverScreen');
-        const levelUpScreen = document.getElementById('levelUpScreen');
-        const startButton = document.getElementById('startButton');
-        const restartButton = document.getElementById('restartButton');
-        const nextLevelButton = document.getElementById('nextLevelButton');
-        const scoreDisplay = document.getElementById('score');
-        const livesDisplay = document.getElementById('lives');
-        const levelDisplay = document.getElementById('level');
-        const finalScoreDisplay = document.getElementById('finalScore');
-        const finalLevelDisplay = document.getElementById('finalLevel');
-        const nextLevelDisplay = document.getElementById('nextLevel');
-        
-        // Botones de control
-        const leftButton = document.getElementById('leftButton');
-        const rightButton = document.getElementById('rightButton');
-        const jumpButton = document.getElementById('jumpButton');
-        
-        // Variables del juego
-        let gameRunning = false;
-        let gameStarted = false;
-        let score = 0;
-        let lives = 3;
-        let level = 1;
-        let gameSpeed = 1;
-        
-        // Clase para Pac-Man
-        class Pacman {
-            constructor() {
-                this.width = 40;
-                this.height = 40;
-                this.x = 50;
-                this.y = canvas.height - 150;
-                this.velocityY = 0;
-                this.velocityX = 0;
-                this.gravity = 0.8;
-                this.jumpPower = -15;
-                this.grounded = false;
-                this.direction = 1; // 1 = derecha, -1 = izquierda
-                this.mouthOpen = 0;
-                this.mouthDirection = 1;
-            }
+
+        // Obtener nombre de la nota actual
+        function getNoteName(index) {
+            // Índices base para cada cuerda de viola
+            const baseIndices = {
+                0: 7,  // Sol
+                1: 2,  // Re
+                2: 9   // La
+            };
             
-            draw() {
-                ctx.save();
-                ctx.translate(this.x + this.width/2, this.y + this.height/2);
+            let newIndex = baseIndices[index] + semitones[index];
+            
+            // Manejar desbordamiento
+            while (newIndex < 0) newIndex += 12;
+            newIndex = newIndex % 12;
+            
+            return noteNames[newIndex];
+        }
+
+        // Crear sonido de viola
+        function createViolinSound() {
+            oscillators = baseFrequencies.map((baseFreq, index) => {
+                const osc = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
                 
-                // Rotar según la dirección
-                if (this.direction === -1) {
-                    ctx.scale(-1, 1);
+                // Usar frecuencia ajustada
+                const freq = getAdjustedFrequency(index);
+                osc.type = 'sawtooth';
+                osc.frequency.value = freq;
+                gainNode.gain.value = 0;
+                
+                osc.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                return { osc, gainNode, baseIndex: index, active: oscActive[index] };
+            });
+
+            // Iniciar osciladores
+            oscillators.forEach(obj => obj.osc.start());
+        }
+
+        // Actualizar sonido basado en el movimiento
+        function updateSound(timestamp) {
+            const totalVelocity = Math.hypot(
+                filteredVelocity.x,
+                filteredVelocity.y,
+                filteredVelocity.z
+            );
+            
+            const silenceThreshold = 0.3;
+            
+            // Silenciar si la velocidad es baja
+            if (totalVelocity < silenceThreshold) {
+                oscillators.forEach(obj => {
+                    if (obj.active) {
+                        obj.gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+                    }
+                });
+                return;
+            }
+
+            const now = audioContext.currentTime;
+            const intensityScale = 0.4;
+            
+            // Calcular intensidades para cada eje
+            const intensities = [
+                Math.min(Math.pow(Math.abs(filteredVelocity.x * intensityScale), 1.3), 1.5),
+                Math.min(Math.pow(Math.abs(filteredVelocity.y * intensityScale), 1.3), 1.5),
+                Math.min(Math.pow(Math.abs(filteredVelocity.z * intensityScale), 1.3), 1.5)
+            ];
+
+            // Aplicar efectos a cada oscilador
+            oscillators.forEach((obj, i) => {
+                if (!obj.active) return;
+                
+                obj.gainNode.gain.setTargetAtTime(intensities[i] * 0.3, now, 0.1);
+                
+                // Añadir vibrato
+                const vibratoFreq = 6 + (intensities[i] * 4);
+                const vibratoDepth = intensities[i] * 8;
+                
+                // Actualizar frecuencia con ajuste de semitonos
+                const adjustedFreq = getAdjustedFrequency(obj.baseIndex);
+                obj.osc.frequency.setValueAtTime(
+                    adjustedFreq + Math.sin(now * vibratoFreq * Math.PI * 2) * vibratoDepth,
+                    now
+                );
+            });
+        }
+
+        // Actualizar la visualización de frecuencias
+        function updateFrequencyDisplay(index) {
+            const freqDisplay = document.getElementById(`freq${index+1}`);
+            const noteDisplay = document.getElementById(`note${index+1}`);
+            const freq = getAdjustedFrequency(index);
+            const noteName = getNoteName(index);
+            
+            freqDisplay.textContent = `${freq.toFixed(1)} Hz`;
+            noteDisplay.textContent = noteName;
+        }
+
+        // Configurar los controles deslizantes
+        function setupSliders() {
+            for (let i = 0; i < 3; i++) {
+                const slider = document.getElementById(`slider${i+1}`);
+                const ticksContainer = document.getElementById(`ticks${i+1}`);
+                
+                // Limpiar ticks anteriores
+                ticksContainer.innerHTML = '';
+                
+                // Crear marcas para el slider (ahora solo 13 ticks: 0-12)
+                for (let j = 0; j < 13; j++) {
+                    const tick = document.createElement('div');
+                    tick.className = 'tick';
+                    
+                    if (j === 6) {
+                        tick.classList.add('center');
+                    } else if (j % 2 === 0) {
+                        tick.classList.add('major');
+                    }
+                    
+                    ticksContainer.appendChild(tick);
                 }
                 
-                // Dibujar cuerpo de Pac-Man
-                ctx.fillStyle = '#FFEB3B';
-                ctx.beginPath();
-                ctx.arc(0, 0, this.width/2, (0.2 + this.mouthOpen) * Math.PI, (1.8 - this.mouthOpen) * Math.PI);
-                ctx.lineTo(0, 0);
-                ctx.closePath();
-                ctx.fill();
+                // Evento de cambio para el slider
+                slider.addEventListener('input', function() {
+                    // Convertir valor (0-12) a semitonos (-6 a 6)
+                    semitones[i] = parseInt(this.value) - 6;
+                    updateFrequencyDisplay(i);
+                    
+                    // Actualizar frecuencia en tiempo real si está sonando
+                    if (isPlaying && oscillators[i]) {
+                        const freq = getAdjustedFrequency(i);
+                        oscillators[i].osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+                    }
+                });
                 
-                // Ojo
-                ctx.fillStyle = 'black';
-                ctx.beginPath();
-                ctx.arc(-this.width/6, -this.height/6, this.width/10, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.restore();
-                
-                // Actualizar apertura de boca
-                this.mouthOpen += 0.1 * this.mouthDirection;
-                if (this.mouthOpen >= 0.4 || this.mouthOpen <= 0) {
-                    this.mouthDirection *= -1;
-                }
+                // Inicializar display
+                updateFrequencyDisplay(i);
             }
             
-            update(platforms) {
-                // Aplicar gravedad
-                this.velocityY += this.gravity;
-                this.y += this.velocityY;
+            // Configurar botones de toggle para cada oscilador
+            document.querySelectorAll('.osc-toggle').forEach(button => {
+                const index = parseInt(button.dataset.index);
                 
-                // Movimiento horizontal
-                this.x += this.velocityX;
-                
-                // Limitar en los bordes de la pantalla
-                if (this.x < 0) this.x = 0;
-                if (this.x > canvas.width - this.width) this.x = canvas.width - this.width;
-                
-                // Detectar colisión con plataformas
-                this.grounded = false;
-                for (let platform of platforms) {
-                    if (this.collidesWith(platform)) {
-                        // Colisión desde arriba
-                        if (this.velocityY > 0 && this.y + this.height <= platform.y + 10) {
-                            this.y = platform.y - this.height;
-                            this.velocityY = 0;
-                            this.grounded = true;
+                button.addEventListener('click', function() {
+                    oscActive[index] = !oscActive[index];
+                    
+                    if (oscActive[index]) {
+                        this.classList.add('active');
+                    } else {
+                        this.classList.remove('active');
+                    }
+                    
+                    // Si estamos reproduciendo, actualizamos el estado del oscilador
+                    if (isPlaying && oscillators[index]) {
+                        if (!oscActive[index]) {
+                            oscillators[index].gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
                         }
                     }
-                }
-                
-                // Si cae fuera de la pantalla, perder vida
-                if (this.y > canvas.height) {
-                    loseLife();
-                }
-            }
-            
-            collidesWith(object) {
-                return this.x < object.x + object.width &&
-                       this.x + this.width > object.x &&
-                       this.y < object.y + object.height &&
-                       this.y + this.height > object.y;
-            }
-            
-            jump() {
-                if (this.grounded) {
-                    this.velocityY = this.jumpPower;
-                }
-            }
+                });
+            });
         }
-        
-        // Clase para las mandarinas
-        class Mandarin {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
-                this.width = 30;
-                this.height = 30;
-                this.collected = false;
-            }
-            
-            draw() {
-                if (this.collected) return;
-                
-                // Cuerpo de la mandarina
-                ctx.fillStyle = '#FF9800';
-                ctx.beginPath();
-                ctx.arc(this.x + this.width/2, this.y + this.height/2, this.width/2, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Tallo
-                ctx.fillStyle = '#4CAF50';
-                ctx.fillRect(this.x + this.width/2 - 2, this.y - 5, 4, 8);
-                
-                // Hoja
-                ctx.fillStyle = '#8BC34A';
-                ctx.beginPath();
-                ctx.moveTo(this.x + this.width/2, this.y - 5);
-                ctx.lineTo(this.x + this.width/2 + 8, this.y - 15);
-                ctx.lineTo(this.x + this.width/2, this.y - 10);
-                ctx.closePath();
-                ctx.fill();
-            }
-        }
-        
-        // Clase para los chanchos
-        class Chancho {
-            constructor(x, y, direction) {
-                this.x = x;
-                this.y = y;
-                this.width = 40;
-                this.height = 30;
-                this.direction = direction; // 1 = derecha, -1 = izquierda
-                this.speed = 2 * gameSpeed;
-                this.moveCounter = 0;
-            }
-            
-            draw() {
-                ctx.save();
-                ctx.translate(this.x + this.width/2, this.y + this.height/2);
-                
-                // Rotar según la dirección
-                if (this.direction === -1) {
-                    ctx.scale(-1, 1);
-                }
-                
-                // Cuerpo del chancho (círculo)
-                ctx.fillStyle = '#F48FB1';
-                ctx.beginPath();
-                ctx.arc(0, 0, this.width/2, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Orejas
-                ctx.fillStyle = '#F06292';
-                ctx.beginPath();
-                ctx.arc(-this.width/3, -this.height/3, this.width/5, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.arc(this.width/3, -this.height/3, this.width/5, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Hocico
-                ctx.fillStyle = '#F8BBD0';
-                ctx.beginPath();
-                ctx.arc(this.width/4, 0, this.width/4, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Nariz
-                ctx.fillStyle = '#E91E63';
-                ctx.beginPath();
-                ctx.arc(this.width/3, 0, this.width/8, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Ojos
-                ctx.fillStyle = 'black';
-                ctx.beginPath();
-                ctx.arc(-this.width/8, -this.height/8, this.width/12, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.restore();
-            }
-            
-            update(platforms) {
-                // Movimiento horizontal
-                this.x += this.speed * this.direction;
-                
-                // Cambiar dirección al llegar al borde de una plataforma
-                this.moveCounter++;
-                if (this.moveCounter > 60) {
-                    if (Math.random() < 0.02) {
-                        this.direction *= -1;
-                        this.moveCounter = 0;
+
+        // Alternar inicio/detención
+        async function toggleSound() {
+            if (!isPlaying) {
+                try {
+                    // Solicitar permiso para sensores en iOS
+                    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                        const permission = await DeviceMotionEvent.requestPermission();
+                        if (permission !== 'granted') {
+                            return;
+                        }
                     }
+
+                    // Iniciar contexto de audio
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    startTime = Date.now();
+                    
+                    // Crear sonido
+                    createViolinSound();
+                    
+                    // Inicializar valores
+                    filteredVelocity = { x: 0, y: 0, z: 0 };
+                    lastUpdateTime = 0;
+                    
+                    // Escuchar eventos de movimiento
+                    window.addEventListener('devicemotion', handleMotion);
+                    
+                    // Actualizar UI
+                    toggleButton.textContent = '⏹';
+                    toggleButton.classList.add('playing');
+                    isPlaying = true;
+                    
+                    // Intentar bloquear orientación
+                    lockScreenOrientation();
+                } catch (error) {
+                    console.error('Error al iniciar: ', error);
+                }
+            } else {
+                // Detener sonido
+                oscillators.forEach(obj => obj.osc.stop());
+                if (audioContext) {
+                    audioContext.close();
                 }
                 
-                // Cambiar dirección si llega al borde de la pantalla
-                if (this.x <= 0 || this.x + this.width >= canvas.width) {
-                    this.direction *= -1;
-                }
+                // Eliminar listener de movimiento
+                window.removeEventListener('devicemotion', handleMotion);
                 
-                // Detectar si está al borde de una plataforma
-                let onPlatform = false;
-                for (let platform of platforms) {
-                    if (this.x >= platform.x && 
-                        this.x + this.width <= platform.x + platform.width &&
-                        this.y + this.height <= platform.y + 10 &&
-                        this.y + this.height >= platform.y) {
-                        onPlatform = true;
-                        break;
-                    }
-                }
-                
-                // Si no está sobre una plataforma, cambiar dirección
-                if (!onPlatform) {
-                    this.direction *= -1;
-                }
+                // Actualizar UI
+                toggleButton.textContent = '▶';
+                toggleButton.classList.remove('playing');
+                isPlaying = false;
             }
         }
         
-        // Clase para las plataformas
-        class Platform {
-            constructor(x, y, width, height) {
-                this.x = x;
-                this.y = y;
-                this.width = width;
-                this.height = height;
+        // Manejar eventos de movimiento
+        function handleMotion(e) {
+            const now = Date.now();
+            const deltaTime = (now - lastUpdateTime) / 1000;
+            
+            if (lastUpdateTime !== 0 && deltaTime > 0) {
+                // Filtrar y suavizar la velocidad
+                filteredVelocity.x = velocityDecay * (filteredVelocity.x + e.acceleration.x * deltaTime);
+                filteredVelocity.y = velocityDecay * (filteredVelocity.y + e.acceleration.y * deltaTime);
+                filteredVelocity.z = velocityDecay * (filteredVelocity.z + e.acceleration.z * deltaTime);
             }
             
-            draw() {
-                ctx.fillStyle = '#8BC34A';
-                ctx.fillRect(this.x, this.y, this.width, this.height);
-                
-                // Textura de hierba
-                ctx.fillStyle = '#7CB342';
-                for (let i = 0; i < this.width; i += 10) {
-                    ctx.fillRect(this.x + i, this.y, 5, 3);
-                }
+            lastUpdateTime = now;
+            updateSound(now);
+        }
+        
+        // Bloquear orientación de pantalla
+        function lockScreenOrientation() {
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('portrait').catch(function(error) {
+                    console.log('Error locking orientation: ', error);
+                });
+            } else {
+                // Solución alternativa para navegadores que no soportan screen.orientation.lock
+                window.addEventListener('orientationchange', preventRotation);
             }
         }
         
-        // Crear objetos del juego
-        let pacman;
-        let platforms = [];
-        let mandarins = [];
-        let chanchos = [];
-        
-        // Inicializar nivel
-        function initLevel() {
-            // Crear Pac-Man
-            pacman = new Pacman();
+        // Prevenir rotación de pantalla
+        function preventRotation() {
+            if (Math.abs(window.orientation) === 90) {
+                // Si está en modo paisaje, forzar modo retrato
+                document.body.style.transform = 'rotate(0deg)';
+                document.body.style.width = '100%';
+                document.body.style.height = '100%';
+            }
+        }
+
+        // Inicializar al cargar la página
+        window.addEventListener('DOMContentLoaded', () => {
+            toggleButton.addEventListener('click', toggleSound);
+            setupSliders();
             
-            // Crear plataformas en posiciones relativas al canvas
-            const groundHeight = 50;
-            platforms = [
-                new Platform(0, canvas.height - groundHeight, canvas.width, groundHeight), // Suelo
-                new Platform(canvas.width * 0.1, canvas.height - 150, canvas.width * 0.4, 20),
-                new Platform(canvas.width * 0.6, canvas.height - 200, canvas.width * 0.3, 20),
-                new Platform(canvas.width * 0.2, canvas.height - 300, canvas.width * 0.45, 20),
-                new Platform(canvas.width * 0.05, canvas.height - 400, canvas.width * 0.4, 20),
-                new Platform(canvas.width * 0.5, canvas.height 
+            // Prevenir rotación de pantalla
+            window.addEventListener('orientationchange', function() {
+                lockScreenOrientation();
+                preventRotation();
+            });
+            
+            // Forzar orientación vertical inicialmente
+            lockScreenOrientation();
+            preventRotation();
+        });
+    </script>
+</body>
+</html>
