@@ -280,30 +280,12 @@
                 transform: rotate(0deg);
             }
         }
-
-        /* Nuevos estilos para información de sonido de viento */
-        .wind-info {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 10px 15px;
-            border-radius: 15px;
-            margin-top: 20px;
-            text-align: center;
-            font-size: 0.9rem;
-            max-width: 500px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        
-        .wind-info p {
-            line-height: 1.4;
-        }
     </style>
 </head>
 <body>
     <div class="performance-info">
         <p>Versión optimizada: <span class="highlight">Sonido de viento suave</span><br>
-        Usa <span class="highlight">filtros paso bajo</span> y envolvente ADSR</p>
+        Filtros mejorados para evitar golpes</p>
     </div>
     
     <div class="sliders-container">
@@ -354,12 +336,6 @@
             </div>
             <div class="freq-display" id="freq3">440.0 Hz</div>
         </div>
-    </div>
-    
-    <div class="wind-info">
-        <p>✨ <span class="highlight">Nuevo sonido de viento</span> con transiciones suaves</p>
-        <p>Mueve el dispositivo para controlar la intensidad del sonido</p>
-        <p>Usa los controles para ajustar el tono de cada "flauta"</p>
     </div>
     
     <div class="controls">
@@ -434,11 +410,11 @@
                 const gainNode = audioContext.createGain();
                 const gainNode2 = audioContext.createGain();
                 
-                // Crear filtro paso bajo para suavizar el sonido
+                // Crear filtro paso bajo mejorado para evitar golpes
                 const filter = audioContext.createBiquadFilter();
                 filter.type = 'lowpass';
-                filter.frequency.value = 2000; // Frecuencia de corte inicial
-                filter.Q.value = 0.7;
+                filter.frequency.value = 1800; // Frecuencia de corte inicial
+                filter.Q.value = 0.5; // Valor Q reducido para sonido más suave
                 
                 // Configurar frecuencia ajustada
                 const freq = getAdjustedFrequency(index);
@@ -465,8 +441,8 @@
                     baseIndex: index, 
                     active: oscActive[index],
                     lastIntensity: 0,
-                    attackTime: 0.05 + Math.random() * 0.1, // Tiempos de ataque aleatorios
-                    releaseTime: 0.2 + Math.random() * 0.2  // Tiempos de liberación aleatorios
+                    attackTime: 0.08 + Math.random() * 0.1, // Tiempos de ataque aleatorios
+                    releaseTime: 0.25 + Math.random() * 0.2  // Tiempos de liberación aleatorios
                 };
             });
 
@@ -515,7 +491,7 @@
                 
                 const intensity = intensities[i];
                 
-                // Suavizar cambios de intensidad
+                // Suavizar cambios de intensidad para evitar golpes
                 const smoothedIntensity = 0.3 * intensity + 0.7 * obj.lastIntensity;
                 obj.lastIntensity = smoothedIntensity;
                 
@@ -614,9 +590,9 @@
                     // Si estamos reproduciendo, actualizamos el estado del oscilador
                     if (isPlaying && oscillators[index]) {
                         if (!oscActive[index]) {
-                            // Liberación suave al desactivar
-                            oscillators[index].gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
-                            oscillators[index].gainNode2.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+                            // Liberación suave al desactivar para evitar golpes
+                            oscillators[index].gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.15);
+                            oscillators[index].gainNode2.gain.setTargetAtTime(0, audioContext.currentTime, 0.15);
                         }
                     }
                 });
@@ -665,10 +641,10 @@
                     console.error('Error al iniciar: ', error);
                 }
             } else {
-                // Detener sonido con liberación suave
+                // Detener sonido con liberación suave para evitar golpes
                 oscillators.forEach(obj => {
-                    obj.gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.2);
-                    obj.gainNode2.gain.setTargetAtTime(0, audioContext.currentTime, 0.2);
+                    obj.gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.25);
+                    obj.gainNode2.gain.setTargetAtTime(0, audioContext.currentTime, 0.25);
                 });
                 
                 // Esperar a que el sonido se desvanezca antes de detener
@@ -693,7 +669,7 @@
                     toggleButton.textContent = '▶';
                     toggleButton.classList.remove('playing');
                     isPlaying = false;
-                }, 200);
+                }, 250); // Tiempo suficiente para liberación suave
             }
         }
         
