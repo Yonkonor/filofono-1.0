@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Viola Virtual - Sonido Suave</title>
+    <title>Viento Virtual - Sonido Suave</title>
     <style>
         * {
             box-sizing: border-box;
@@ -27,7 +27,7 @@
             user-select: none;
         }
         
-        .sound-info {
+        .performance-info {
             background: rgba(0, 0, 0, 0.3);
             padding: 10px 15px;
             border-radius: 15px;
@@ -37,7 +37,7 @@
             max-width: 500px;
         }
         
-        .sound-info .highlight {
+        .performance-info .highlight {
             color: #FFD700;
             font-weight: bold;
         }
@@ -263,7 +263,7 @@
                 font-size: 16px;
             }
             
-            .sound-info {
+            .performance-info {
                 font-size: 0.8rem;
                 padding: 8px 12px;
             }
@@ -280,12 +280,30 @@
                 transform: rotate(0deg);
             }
         }
+
+        /* Nuevos estilos para información de sonido de viento */
+        .wind-info {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 15px;
+            border-radius: 15px;
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.9rem;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .wind-info p {
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
-    <div class="sound-info">
-        <p>Versión suavizada: <span class="highlight">Sonido más natural de viola</span><br>
-        Usa ondas senoidales con filtros y envolvente ADSR</p>
+    <div class="performance-info">
+        <p>Versión optimizada: <span class="highlight">Sonido de viento suave</span><br>
+        Usa <span class="highlight">filtros paso bajo</span> y envolvente ADSR</p>
     </div>
     
     <div class="sliders-container">
@@ -336,6 +354,12 @@
             </div>
             <div class="freq-display" id="freq3">440.0 Hz</div>
         </div>
+    </div>
+    
+    <div class="wind-info">
+        <p>✨ <span class="highlight">Nuevo sonido de viento</span> con transiciones suaves</p>
+        <p>Mueve el dispositivo para controlar la intensidad del sonido</p>
+        <p>Usa los controles para ajustar el tono de cada "flauta"</p>
     </div>
     
     <div class="controls">
@@ -394,55 +418,66 @@
             return noteNames[newIndex];
         }
 
-        // Crear sonido de viola con envolvente ADSR y filtros
-        function createViolinSound() {
-            // Crear filtro global para suavizar el sonido
-            const globalFilter = audioContext.createBiquadFilter();
-            globalFilter.type = 'lowpass';
-            globalFilter.frequency.value = 4000; // Frecuencia de corte
-            globalFilter.Q.value = 0.7; // Factor de calidad
-            globalFilter.connect(audioContext.destination);
-            
+        // Crear sonido de viento suave
+        function createWindSound() {
             oscillators = baseFrequencies.map((baseFreq, index) => {
+                // Crear oscilador principal con forma de onda sinusoidal
                 const osc = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                const filter = audioContext.createBiquadFilter();
-                
-                // Usar frecuencia ajustada
-                const freq = getAdjustedFrequency(index);
-                
-                // Usar onda senoidal para un sonido más suave
                 osc.type = 'sine';
-                osc.frequency.value = freq;
                 
-                // Configurar ganancia inicial
-                gainNode.gain.value = 0;
+                // Crear oscilador secundario para añadir calidez
+                const osc2 = audioContext.createOscillator();
+                osc2.type = 'sine';
+                osc2.frequency.value = baseFreq * 2.01; // Ligeramente desafinado para efecto de batido
                 
-                // Configurar filtro para cada oscilador
+                // Crear ganancia para cada oscilador
+                const gainNode = audioContext.createGain();
+                const gainNode2 = audioContext.createGain();
+                
+                // Crear filtro paso bajo para suavizar el sonido
+                const filter = audioContext.createBiquadFilter();
                 filter.type = 'lowpass';
-                filter.frequency.value = 3000 + (index * 500); // Frecuencia de corte variable
-                filter.Q.value = 0.8;
+                filter.frequency.value = 2000; // Frecuencia de corte inicial
+                filter.Q.value = 0.7;
                 
-                // Conectar componentes: osc → gain → filter → globalFilter → destino
+                // Configurar frecuencia ajustada
+                const freq = getAdjustedFrequency(index);
+                osc.frequency.value = freq;
+                osc2.frequency.value = freq * 2.01;
+                
+                // Ganancia inicial en 0
+                gainNode.gain.value = 0;
+                gainNode2.gain.value = 0;
+                
+                // Conectar nodos
                 osc.connect(gainNode);
+                osc2.connect(gainNode2);
                 gainNode.connect(filter);
-                filter.connect(globalFilter);
+                gainNode2.connect(filter);
+                filter.connect(audioContext.destination);
                 
                 return { 
                     osc, 
+                    osc2,
                     gainNode, 
+                    gainNode2,
                     filter,
                     baseIndex: index, 
                     active: oscActive[index],
-                    lastGainValue: 0
+                    lastIntensity: 0,
+                    attackTime: 0.05 + Math.random() * 0.1, // Tiempos de ataque aleatorios
+                    releaseTime: 0.2 + Math.random() * 0.2  // Tiempos de liberación aleatorios
                 };
             });
 
             // Iniciar osciladores
-            oscillators.forEach(obj => obj.osc.start());
+            oscillators.forEach(obj => {
+                obj.osc.start();
+                obj.osc2.start();
+            });
         }
 
-        // Actualizar sonido basado en el movimiento con transiciones suaves
+        // Actualizar sonido basado en el movimiento
         function updateSound(timestamp) {
             const totalVelocity = Math.hypot(
                 filteredVelocity.x,
@@ -450,77 +485,65 @@
                 filteredVelocity.z
             );
             
-            const silenceThreshold = 0.2;
-            const now = audioContext.currentTime;
-            
-            // Calcular intensidad suavizada
-            const intensityScale = 0.3;
-            const intensities = [
-                Math.min(Math.pow(Math.abs(filteredVelocity.x * intensityScale), 1.0), 
-                Math.min(Math.pow(Math.abs(filteredVelocity.y * intensityScale), 1.0), 
-                Math.min(Math.pow(Math.abs(filteredVelocity.z * intensityScale), 1.0)
-            ];
-            
-            // Aplicar efectos a cada oscilador
-            oscillators.forEach((obj, i) => {
-                if (!obj.active) return;
-                
-                // Calcular nueva ganancia con suavizado
-                const targetGain = intensities[i] * 0.2;
-                const gainDiff = targetGain - obj.lastGainValue;
-                const newGain = obj.lastGainValue + (gainDiff * 0.1); // Factor de suavizado
-                
-                // Aplicar envolvente ADSR simplificada
-                if (targetGain > 0.01) {
-                    // Attack: 10ms, Decay: 50ms, Sustain: 80%
-                    obj.gainNode.gain.cancelScheduledValues(now);
-                    obj.gainNode.gain.setValueAtTime(obj.lastGainValue, now);
-                    obj.gainNode.gain.linearRampToValueAtTime(targetGain, now + 0.01);
-                    obj.gainNode.gain.linearRampToValueAtTime(targetGain * 0.8, now + 0.06);
-                } else {
-                    // Release: 100ms
-                    obj.gainNode.gain.cancelScheduledValues(now);
-                    obj.gainNode.gain.setValueAtTime(obj.lastGainValue, now);
-                    obj.gainNode.gain.linearRampToValueAtTime(0, now + 0.1);
-                }
-                
-                obj.lastGainValue = newGain;
-                
-                // Añadir vibrato sutil
-                const vibratoFreq = 5 + (intensities[i] * 2); // Menor frecuencia
-                const vibratoDepth = intensities[i] * 2; // Menor profundidad
-                
-                // Actualizar frecuencia con ajuste de semitonos
-                const adjustedFreq = getAdjustedFrequency(obj.baseIndex);
-                
-                // Suavizar cambios de frecuencia
-                obj.osc.frequency.cancelScheduledValues(now);
-                obj.osc.frequency.setValueAtTime(obj.osc.frequency.value, now);
-                obj.osc.frequency.linearRampToValueAtTime(
-                    adjustedFreq + Math.sin(now * vibratoFreq * Math.PI * 2) * vibratoDepth,
-                    now + 0.05
-                );
-                
-                // Ajustar filtro según la intensidad para suavizar más en baja intensidad
-                obj.filter.frequency.cancelScheduledValues(now);
-                obj.filter.frequency.setValueAtTime(obj.filter.frequency.value, now);
-                obj.filter.frequency.linearRampToValueAtTime(
-                    2000 + (intensities[i] * 3000), 
-                    now + 0.1
-                );
-            });
+            const silenceThreshold = 0.3;
             
             // Silenciar si la velocidad es baja
             if (totalVelocity < silenceThreshold) {
                 oscillators.forEach(obj => {
                     if (obj.active) {
-                        obj.gainNode.gain.cancelScheduledValues(now);
-                        obj.gainNode.gain.setValueAtTime(obj.lastGainValue, now);
-                        obj.gainNode.gain.linearRampToValueAtTime(0, now + 0.2);
-                        obj.lastGainValue = 0;
+                        // Liberación más lenta para transición suave
+                        obj.gainNode.gain.setTargetAtTime(0, audioContext.currentTime, obj.releaseTime);
+                        obj.gainNode2.gain.setTargetAtTime(0, audioContext.currentTime, obj.releaseTime);
                     }
                 });
+                return;
             }
+
+            const now = audioContext.currentTime;
+            const intensityScale = 0.4;
+            
+            // Calcular intensidades para cada eje
+            const intensities = [
+                Math.min(Math.pow(Math.abs(filteredVelocity.x * intensityScale), 1.3), 1.5),
+                Math.min(Math.pow(Math.abs(filteredVelocity.y * intensityScale), 1.3), 1.5),
+                Math.min(Math.pow(Math.abs(filteredVelocity.z * intensityScale), 1.3), 1.5)
+            ];
+
+            // Aplicar efectos a cada oscilador
+            oscillators.forEach((obj, i) => {
+                if (!obj.active) return;
+                
+                const intensity = intensities[i];
+                
+                // Suavizar cambios de intensidad
+                const smoothedIntensity = 0.3 * intensity + 0.7 * obj.lastIntensity;
+                obj.lastIntensity = smoothedIntensity;
+                
+                // Aplicar ganancia con ataque suave
+                obj.gainNode.gain.setTargetAtTime(smoothedIntensity * 0.25, now, obj.attackTime);
+                obj.gainNode2.gain.setTargetAtTime(smoothedIntensity * 0.15, now, obj.attackTime);
+                
+                // Modulación de frecuencia para efecto de vibrato natural
+                const vibratoFreq = 4 + (smoothedIntensity * 3);
+                const vibratoDepth = smoothedIntensity * 2;
+                
+                // Actualizar frecuencia con ajuste de semitonos
+                const adjustedFreq = getAdjustedFrequency(obj.baseIndex);
+                
+                obj.osc.frequency.setValueAtTime(
+                    adjustedFreq + Math.sin(now * vibratoFreq * Math.PI * 2) * vibratoDepth,
+                    now
+                );
+                
+                obj.osc2.frequency.setValueAtTime(
+                    adjustedFreq * 2.01 + Math.sin(now * vibratoFreq * Math.PI * 2 + 0.5) * vibratoDepth,
+                    now
+                );
+                
+                // Ajustar filtro según la intensidad (más brillo con más intensidad)
+                const filterFreq = 800 + smoothedIntensity * 2000;
+                obj.filter.frequency.setValueAtTime(filterFreq, now);
+            });
         }
 
         // Actualizar la visualización de frecuencias
@@ -566,8 +589,8 @@
                     // Actualizar frecuencia en tiempo real si está sonando
                     if (isPlaying && oscillators[i]) {
                         const freq = getAdjustedFrequency(i);
-                        oscillators[i].osc.frequency.cancelScheduledValues(audioContext.currentTime);
                         oscillators[i].osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+                        oscillators[i].osc2.frequency.setValueAtTime(freq * 2.01, audioContext.currentTime);
                     }
                 });
                 
@@ -591,11 +614,9 @@
                     // Si estamos reproduciendo, actualizamos el estado del oscilador
                     if (isPlaying && oscillators[index]) {
                         if (!oscActive[index]) {
-                            const now = audioContext.currentTime;
-                            oscillators[index].gainNode.gain.cancelScheduledValues(now);
-                            oscillators[index].gainNode.gain.setValueAtTime(oscillators[index].lastGainValue, now);
-                            oscillators[index].gainNode.gain.linearRampToValueAtTime(0, now + 0.2);
-                            oscillators[index].lastGainValue = 0;
+                            // Liberación suave al desactivar
+                            oscillators[index].gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+                            oscillators[index].gainNode2.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
                         }
                     }
                 });
@@ -620,8 +641,8 @@
                     });
                     startTime = Date.now();
                     
-                    // Crear sonido
-                    createViolinSound();
+                    // Crear sonido de viento
+                    createWindSound();
                     
                     // Inicializar valores
                     filteredVelocity = { x: 0, y: 0, z: 0 };
@@ -644,8 +665,106 @@
                     console.error('Error al iniciar: ', error);
                 }
             } else {
-                // Detener sonido con suavizado
-                const now = audioContext.currentTime;
+                // Detener sonido con liberación suave
                 oscillators.forEach(obj => {
-                    obj.gainNode.gain.cancelScheduledValues(now);
-                    obj.gainNode.g
+                    obj.gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.2);
+                    obj.gainNode2.gain.setTargetAtTime(0, audioContext.currentTime, 0.2);
+                });
+                
+                // Esperar a que el sonido se desvanezca antes de detener
+                setTimeout(() => {
+                    if (oscillators.length > 0) {
+                        oscillators.forEach(obj => {
+                            obj.osc.stop();
+                            obj.osc2.stop();
+                        });
+                    }
+                    if (audioContext) {
+                        audioContext.close();
+                    }
+                    
+                    // Eliminar listener de movimiento
+                    window.removeEventListener('devicemotion', handleMotion);
+                    
+                    // Detener bucle de animación
+                    cancelAnimationFrame(animationFrameId);
+                    
+                    // Actualizar UI
+                    toggleButton.textContent = '▶';
+                    toggleButton.classList.remove('playing');
+                    isPlaying = false;
+                }, 200);
+            }
+        }
+        
+        // Manejar eventos de movimiento
+        function handleMotion(e) {
+            const now = Date.now();
+            const deltaTime = (now - lastUpdateTime) / 1000;
+            
+            if (lastUpdateTime !== 0 && deltaTime > 0) {
+                // Filtrar y suavizar la velocidad con un filtro de paso bajo
+                filteredVelocity.x = 0.3 * e.acceleration.x + 0.7 * filteredVelocity.x;
+                filteredVelocity.y = 0.3 * e.acceleration.y + 0.7 * filteredVelocity.y;
+                filteredVelocity.z = 0.3 * e.acceleration.z + 0.7 * filteredVelocity.z;
+            } else {
+                // Primera vez: asignar directamente
+                filteredVelocity.x = e.acceleration.x;
+                filteredVelocity.y = e.acceleration.y;
+                filteredVelocity.z = e.acceleration.z;
+            }
+            
+            lastUpdateTime = now;
+        }
+        
+        // Iniciar bucle de animación para actualización constante
+        function startAnimationLoop() {
+            function loop() {
+                if (isPlaying) {
+                    updateSound(Date.now());
+                }
+                animationFrameId = requestAnimationFrame(loop);
+            }
+            animationFrameId = requestAnimationFrame(loop);
+        }
+        
+        // Bloquear orientación de pantalla
+        function lockScreenOrientation() {
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('portrait').catch(function(error) {
+                    console.log('Error locking orientation: ', error);
+                });
+            } else {
+                // Solución alternativa para navegadores que no soportan screen.orientation.lock
+                window.addEventListener('orientationchange', preventRotation);
+            }
+        }
+        
+        // Prevenir rotación de pantalla
+        function preventRotation() {
+            if (Math.abs(window.orientation) === 90) {
+                // Si está en modo paisaje, forzar modo retrato
+                document.body.style.transform = 'rotate(0deg)';
+                document.body.style.width = '100%';
+                document.body.style.height = '100%';
+            }
+        }
+
+        // Inicializar al cargar la página
+        window.addEventListener('DOMContentLoaded', () => {
+            toggleButton.addEventListener('click', toggleSound);
+            setupSliders();
+            
+            // Prevenir rotación de pantalla
+            window.addEventListener('orientationchange', function() {
+                lockScreenOrientation();
+                preventRotation();
+            });
+            
+            // Forzar orientación vertical inicialmente
+            lockScreenOrientation();
+            preventRotation();
+        });
+    </script>
+</body>
+</html>
