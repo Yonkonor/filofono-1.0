@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Viola Virtual</title>
+    <title>Viola Virtual - Mejor Rendimiento</title>
     <style>
         * {
             box-sizing: border-box;
@@ -25,6 +25,21 @@
             touch-action: none;
             -webkit-user-select: none;
             user-select: none;
+        }
+        
+        .performance-info {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 15px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 0.9rem;
+            max-width: 500px;
+        }
+        
+        .performance-info .highlight {
+            color: #FFD700;
+            font-weight: bold;
         }
         
         .sliders-container {
@@ -247,6 +262,11 @@
                 height: 35px;
                 font-size: 16px;
             }
+            
+            .performance-info {
+                font-size: 0.8rem;
+                padding: 8px 12px;
+            }
         }
         
         /* Mensaje de orientación en modo paisaje */
@@ -263,6 +283,11 @@
     </style>
 </head>
 <body>
+    <div class="performance-info">
+        <p>Versión optimizada: <span class="highlight">Respuesta de sonido más rápida</span><br>
+        Usa <span class="highlight">requestAnimationFrame</span> y tiempos de suavizado reducidos</p>
+    </div>
+    
     <div class="sliders-container">
         <!-- Oscilador 1: Sol -->
         <div class="slider-wrapper">
@@ -332,6 +357,7 @@
         let lastUpdateTime = 0;
         const velocityDecay = 0.97;
         let startTime;
+        let animationFrameId;
         
         // Frecuencias base para viola (Sol, Re, La)
         const baseFrequencies = [196.0, 293.7, 440.0];
@@ -404,7 +430,8 @@
             if (totalVelocity < silenceThreshold) {
                 oscillators.forEach(obj => {
                     if (obj.active) {
-                        obj.gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+                        // Reducir tiempo de suavizado para respuesta más rápida
+                        obj.gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.05);
                     }
                 });
                 return;
@@ -424,7 +451,8 @@
             oscillators.forEach((obj, i) => {
                 if (!obj.active) return;
                 
-                obj.gainNode.gain.setTargetAtTime(intensities[i] * 0.3, now, 0.1);
+                // Reducir tiempo de suavizado para respuesta más rápida
+                obj.gainNode.gain.setTargetAtTime(intensities[i] * 0.3, now, 0.05);
                 
                 // Añadir vibrato
                 const vibratoFreq = 6 + (intensities[i] * 4);
@@ -506,7 +534,7 @@
                     // Si estamos reproduciendo, actualizamos el estado del oscilador
                     if (isPlaying && oscillators[index]) {
                         if (!oscActive[index]) {
-                            oscillators[index].gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+                            oscillators[index].gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.05);
                         }
                     }
                 });
@@ -525,8 +553,10 @@
                         }
                     }
 
-                    // Iniciar contexto de audio
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    // Iniciar contexto de audio con configuración de baja latencia
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                        latencyHint: 'interactive'
+                    });
                     startTime = Date.now();
                     
                     // Crear sonido
@@ -538,6 +568,9 @@
                     
                     // Escuchar eventos de movimiento
                     window.addEventListener('devicemotion', handleMotion);
+                    
+                    // Iniciar bucle de animación para actualización constante
+                    startAnimationLoop();
                     
                     // Actualizar UI
                     toggleButton.textContent = '⏹';
@@ -559,6 +592,9 @@
                 // Eliminar listener de movimiento
                 window.removeEventListener('devicemotion', handleMotion);
                 
+                // Detener bucle de animación
+                cancelAnimationFrame(animationFrameId);
+                
                 // Actualizar UI
                 toggleButton.textContent = '▶';
                 toggleButton.classList.remove('playing');
@@ -572,14 +608,29 @@
             const deltaTime = (now - lastUpdateTime) / 1000;
             
             if (lastUpdateTime !== 0 && deltaTime > 0) {
-                // Filtrar y suavizar la velocidad
-                filteredVelocity.x = velocityDecay * (filteredVelocity.x + e.acceleration.x * deltaTime);
-                filteredVelocity.y = velocityDecay * (filteredVelocity.y + e.acceleration.y * deltaTime);
-                filteredVelocity.z = velocityDecay * (filteredVelocity.z + e.acceleration.z * deltaTime);
+                // Filtrar y suavizar la velocidad con un filtro de paso bajo
+                filteredVelocity.x = 0.3 * e.acceleration.x + 0.7 * filteredVelocity.x;
+                filteredVelocity.y = 0.3 * e.acceleration.y + 0.7 * filteredVelocity.y;
+                filteredVelocity.z = 0.3 * e.acceleration.z + 0.7 * filteredVelocity.z;
+            } else {
+                // Primera vez: asignar directamente
+                filteredVelocity.x = e.acceleration.x;
+                filteredVelocity.y = e.acceleration.y;
+                filteredVelocity.z = e.acceleration.z;
             }
             
             lastUpdateTime = now;
-            updateSound(now);
+        }
+        
+        // Iniciar bucle de animación para actualización constante
+        function startAnimationLoop() {
+            function loop() {
+                if (isPlaying) {
+                    updateSound(Date.now());
+                }
+                animationFrameId = requestAnimationFrame(loop);
+            }
+            animationFrameId = requestAnimationFrame(loop);
         }
         
         // Bloquear orientación de pantalla
