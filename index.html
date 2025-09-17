@@ -1,120 +1,91 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Detección de Movimiento</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  <meta charset="UTF-8">
+  <title>Velocidad con Reset y Detección</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    #statusCircle {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: green;
+      margin-bottom: 20px;
+      transition: background 0.3s ease;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    .value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #2563eb;
+    }
+  </style>
+</head>
+<body>
+  <div id="statusCircle"></div>
+  <h1>Velocidad estimada</h1>
+  <div class="value" id="velocity">0.00 m/s</div>
+
+  <script>
+    let lastTime = null;
+    let velocity = { x: 0, y: 0, z: 0 };
+    const g = 9.81;
+    const quietThreshold = 0.3; // umbral en m/s² para considerar "quieto"
+    const circle = document.getElementById("statusCircle");
+
+    if (window.DeviceMotionEvent) {
+      window.addEventListener("devicemotion", (event) => {
+        const acc = event.accelerationIncludingGravity;
+        if (!acc) return;
+
+        const now = Date.now();
+        if (lastTime === null) {
+          lastTime = now;
+          return;
         }
-        
-        body {
-            background-color: #f0f0f0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
+        const dt = (now - lastTime) / 1000;
+        lastTime = now;
+
+        // Magnitud de la aceleración total
+        const accMag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+
+        // Detectar si está quieto (solo gravedad ≈ 9.81)
+        const still = Math.abs(accMag - g) < quietThreshold;
+
+        if (still) {
+          // Reset de velocidad
+          velocity = { x: 0, y: 0, z: 0 };
+          circle.style.background = "green";
+        } else {
+          circle.style.background = "red";
+          // Aproximación: quitar gravedad del eje Z suponiendo el móvil plano
+          const ax = acc.x;
+          const ay = acc.y;
+          const az = acc.z - g;
+
+          // Integrar aceleración -> velocidad
+          velocity.x += ax * dt;
+          velocity.y += ay * dt;
+          velocity.z += az * dt;
         }
-        
-        .phone {
-            width: 360px;
-            height: 700px;
-            background-color: #222;
-            border-radius: 40px;
-            overflow: hidden;
-            position: relative;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
-            border: 4px solid #444;
-        }
-        
-        .screen {
-            width: 100%;
-            height: 100%;
-            background-color: #fff;
-            overflow: hidden;
-            position: relative;
-        }
-        
-        .status-bar {
-            height: 24px;
-            background-color: #000;
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
-            font-size: 12px;
-        }
-        
-        .time {
-            font-weight: 600;
-        }
-        
-        .nav-bar {
-            height: 50px;
-            background-color: #f8f8f8;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 15px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        
-        .nav-title {
-            font-weight: 500;
-        }
-        
-        .content {
-            height: calc(100% - 74px);
-            padding: 20px;
-            text-align: center;
-            overflow-y: auto;
-        }
-        
-        .circle {
-            width: 100px;
-            height: 100px;
-            background-color: #4CAF50;
-            border-radius: 50%;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            display: none;
-            box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
-        }
-        
-        .info-box {
-            background-color: #f8f8f8;
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 20px;
-            text-align: left;
-        }
-        
-        .info-title {
-            font-weight: 600;
-            margin-bottom: 10px;
-            color: #333;
-        }
-        
-        .data-item {
-            margin-bottom: 8px;
-            font-size: 14px;
-            color: #555;
-        }
-        
-        .notch {
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 40%;
-            height: 24px;
-            background-color: #000;
-            border-bottom-left-radius: 12px;
+
+        const speed = Math.sqrt(velocity.x**2 + velocity.y**2 + velocity.z**2);
+        document.getElementById("velocity").innerText = speed.toFixed(2) + " m/s";
+      });
+    } else {
+      alert("Tu dispositivo no soporta DeviceMotion API");
+    }
+  </script>
+</body>
+</html>
