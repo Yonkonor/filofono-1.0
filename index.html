@@ -2,89 +2,54 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Velocidad con Reset y Detección</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detector de Movimiento</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f3f4f6;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
       margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: #111;
     }
-    #statusCircle {
-      width: 100px;
-      height: 100px;
+    #circle {
+      width: 150px;
+      height: 150px;
       border-radius: 50%;
       background: green;
-      margin-bottom: 20px;
-      transition: background 0.3s ease;
-    }
-    h1 {
-      margin-bottom: 10px;
-    }
-    .value {
-      font-size: 2rem;
-      font-weight: bold;
-      color: #2563eb;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+      transition: background 0.3s;
     }
   </style>
 </head>
 <body>
-  <div id="statusCircle"></div>
-  <h1>Velocidad estimada</h1>
-  <div class="value" id="velocity">0.00 m/s</div>
+  <div id="circle"></div>
 
   <script>
-    let lastTime = null;
-    let velocity = { x: 0, y: 0, z: 0 };
-    const g = 9.81;
-    const quietThreshold = 0.3; // umbral en m/s² para considerar "quieto"
-    const circle = document.getElementById("statusCircle");
+    const circle = document.getElementById("circle");
+    const THRESHOLD = 1.5; // sensibilidad del movimiento
+    let lastChange = Date.now();
 
     if (window.DeviceMotionEvent) {
       window.addEventListener("devicemotion", (event) => {
-        const acc = event.accelerationIncludingGravity;
-        if (!acc) return;
+        const ax = event.acceleration.x || 0;
+        const ay = event.acceleration.y || 0;
+        const az = event.acceleration.z || 0;
+        const magnitude = Math.sqrt(ax*ax + ay*ay + az*az);
 
-        const now = Date.now();
-        if (lastTime === null) {
-          lastTime = now;
-          return;
-        }
-        const dt = (now - lastTime) / 1000;
-        lastTime = now;
-
-        // Magnitud de la aceleración total
-        const accMag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
-
-        // Detectar si está quieto (solo gravedad ≈ 9.81)
-        const still = Math.abs(accMag - g) < quietThreshold;
-
-        if (still) {
-          // Reset de velocidad
-          velocity = { x: 0, y: 0, z: 0 };
-          circle.style.background = "green";
+        if (magnitude > THRESHOLD) {
+          circle.style.background = "red"; // en movimiento
+          lastChange = Date.now();
         } else {
-          circle.style.background = "red";
-          // Aproximación: quitar gravedad del eje Z suponiendo el móvil plano
-          const ax = acc.x;
-          const ay = acc.y;
-          const az = acc.z - g;
-
-          // Integrar aceleración -> velocidad
-          velocity.x += ax * dt;
-          velocity.y += ay * dt;
-          velocity.z += az * dt;
+          // Evita que parpadee: solo vuelve a verde si pasó un ratito sin movimiento
+          if (Date.now() - lastChange > 500) {
+            circle.style.background = "green"; // en reposo
+          }
         }
-
-        const speed = Math.sqrt(velocity.x**2 + velocity.y**2 + velocity.z**2);
-        document.getElementById("velocity").innerText = speed.toFixed(2) + " m/s";
       });
     } else {
-      alert("Tu dispositivo no soporta DeviceMotion API");
+      alert("Este dispositivo no soporta acelerómetro.");
     }
   </script>
 </body>
