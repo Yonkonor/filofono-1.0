@@ -1,3 +1,4 @@
+   
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -358,6 +359,7 @@
         const velocityDecay = 0.97;
         let startTime;
         let animationFrameId;
+        let orientationLocked = false;
         
         // Frecuencias base para viola (Sol, Re, La)
         const baseFrequencies = [196.0, 293.7, 440.0];
@@ -599,6 +601,44 @@
             });
         }
 
+        // Bloquear orientación de pantalla
+        function lockScreenOrientation() {
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('portrait').then(() => {
+                    orientationLocked = true;
+                    console.log('Orientación bloqueada en vertical');
+                }).catch(function(error) {
+                    console.log('Error bloqueando orientación: ', error);
+                    // Fallback para navegadores que no soportan screen.orientation.lock
+                    window.addEventListener('orientationchange', preventRotation);
+                });
+            } else {
+                // Solución alternativa para navegadores que no soportan screen.orientation.lock
+                window.addEventListener('orientationchange', preventRotation);
+            }
+        }
+        
+        // Desbloquear orientación de pantalla
+        function unlockScreenOrientation() {
+            if (screen.orientation && screen.orientation.unlock) {
+                screen.orientation.unlock();
+                orientationLocked = false;
+                console.log('Orientación desbloqueada');
+            }
+            // Eliminar el event listener de prevención de rotación
+            window.removeEventListener('orientationchange', preventRotation);
+        }
+        
+        // Prevenir rotación de pantalla (fallback)
+        function preventRotation() {
+            if (Math.abs(window.orientation) === 90) {
+                // Si está en modo paisaje, forzar modo retrato
+                document.body.style.transform = 'rotate(0deg)';
+                document.body.style.width = '100%';
+                document.body.style.height = '100%';
+            }
+        }
+
         // Alternar inicio/detención
         async function toggleSound() {
             if (!isPlaying) {
@@ -630,13 +670,14 @@
                     // Iniciar bucle de animación para actualización constante
                     startAnimationLoop();
                     
+                    // Bloquear orientación de pantalla
+                    lockScreenOrientation();
+                    
                     // Actualizar UI
                     toggleButton.textContent = '⏹';
                     toggleButton.classList.add('playing');
                     isPlaying = true;
                     
-                    // Intentar bloquear orientación
-                    lockScreenOrientation();
                 } catch (error) {
                     console.error('Error al iniciar: ', error);
                 }
@@ -646,6 +687,9 @@
                     obj.gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.25);
                     obj.gainNode2.gain.setTargetAtTime(0, audioContext.currentTime, 0.25);
                 });
+                
+                // Desbloquear orientación de pantalla
+                unlockScreenOrientation();
                 
                 // Esperar a que el sonido se desvanezca antes de detener
                 setTimeout(() => {
@@ -703,44 +747,31 @@
             }
             animationFrameId = requestAnimationFrame(loop);
         }
-        
-        // Bloquear orientación de pantalla
-        function lockScreenOrientation() {
-            if (screen.orientation && screen.orientation.lock) {
-                screen.orientation.lock('portrait').catch(function(error) {
-                    console.log('Error locking orientation: ', error);
-                });
-            } else {
-                // Solución alternativa para navegadores que no soportan screen.orientation.lock
-                window.addEventListener('orientationchange', preventRotation);
-            }
-        }
-        
-        // Prevenir rotación de pantalla
-        function preventRotation() {
-            if (Math.abs(window.orientation) === 90) {
-                // Si está en modo paisaje, forzar modo retrato
-                document.body.style.transform = 'rotate(0deg)';
-                document.body.style.width = '100%';
-                document.body.style.height = '100%';
-            }
-        }
 
         // Inicializar al cargar la página
         window.addEventListener('DOMContentLoaded', () => {
             toggleButton.addEventListener('click', toggleSound);
             setupSliders();
             
-            // Prevenir rotación de pantalla
-            window.addEventListener('orientationchange', function() {
-                lockScreenOrientation();
+            // Forzar orientación vertical inicialmente si ya está en modo paisaje
+            if (Math.abs(window.orientation) === 90) {
                 preventRotation();
-            });
+            }
             
-            // Forzar orientación vertical inicialmente
-            lockScreenOrientation();
-            preventRotation();
+            // Bloquear orientación si la aplicación se inicia en modo paisaje
+            window.addEventListener('orientationchange', function() {
+                if (Math.abs(window.orientation) === 90) {
+                    preventRotation();
+                    if (isPlaying) {
+                        lockScreenOrientation();
+                    }
+                }
+            });
         });
+        
+        // Desbloquear orientación al cerrar/actualizar la página
+        window.addEventListener('beforeunload', unlockScreenOrientation);
+        window.addEventListener('pagehide', unlockScreenOrientation);
     </script>
 </body>
 </html>
