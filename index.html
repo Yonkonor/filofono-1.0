@@ -8,10 +8,13 @@
     body {
       margin: 0;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       height: 100vh;
       background: #111;
+      color: white;
+      font-family: sans-serif;
     }
     #circle {
       width: 150px;
@@ -20,16 +23,32 @@
       background: green;
       box-shadow: 0 0 20px rgba(0,0,0,0.5);
       transition: background 0.3s;
+      margin-top: 20px;
+    }
+    input {
+      padding: 8px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      text-align: center;
+      width: 200px;
     }
   </style>
 </head>
 <body>
+  <label for="tiempo">Tiempo de reposo (ms):</label>
+  <input type="number" id="tiempo" value="500" min="100" step="100">
   <div id="circle"></div>
 
   <script>
     const circle = document.getElementById("circle");
+    const tiempoInput = document.getElementById("tiempo");
     const THRESHOLD = 1.5; // sensibilidad del movimiento
     let lastChange = Date.now();
+
+    function getTiempoReposo() {
+      return parseInt(tiempoInput.value, 10) || 500;
+    }
 
     if (window.DeviceMotionEvent) {
       window.addEventListener("devicemotion", (event) => {
@@ -42,8 +61,7 @@
           circle.style.background = "red"; // en movimiento
           lastChange = Date.now();
         } else {
-          // Evita que parpadee: solo vuelve a verde si pasó un ratito sin movimiento
-          if (Date.now() - lastChange > 500) {
+          if (Date.now() - lastChange > getTiempoReposo()) {
             circle.style.background = "green"; // en reposo
           }
         }
